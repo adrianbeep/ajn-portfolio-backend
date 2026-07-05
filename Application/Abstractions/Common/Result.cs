@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Application.Abstractions.Common
+﻿namespace Application.Abstractions.Common
 {
     public sealed record Result<T>(bool IsSuccess, T Value, Error Error)
     {

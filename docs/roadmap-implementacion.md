@@ -573,18 +573,18 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 
 **Archivos a tocar:**
 
-| Acción | Path | Razón |
-|--------|------|-------|
-| Crear | `Application/Projects/Dtos/ProjectSummaryDto.cs` | DTO para el grid (forma flashcard): Id, Slug, Title, UrlThumbnail, Description |
-| Crear | `Application/Projects/Dtos/ProjectDetailDto.cs` | DTO para el detalle (forma blog): todos los campos del Summary + Content + State (como string), CreatedAt, UpdatedAt |
-| Crear | `Application/Projects/Dtos/ProjectListDto.cs` | DTO envolvente con paginación: Items (lista de Summary), Total, Page, PageSize |
-| Crear | `Application/Projects/Dtos/CreateProjectRequest.cs` | Input para `CreateProjectCommand`: Title, Slug, UrlThumbnail, Description, Content |
-| Crear | `Application/Projects/Dtos/UpdateProjectRequest.cs` | Input para `UpdateProjectCommand`: mismos campos del Create + Id (para saber cuál actualizar) |
-| Crear | `Application/Authentication/Dtos/RegisterRequest.cs` | Input para `RegisterCommand`: Email, Password |
-| Crear | `Application/Authentication/Dtos/LoginRequest.cs` | Input para `LoginQuery`: Email, Password |
-| Crear | `Application/Authentication/Dtos/AuthResponse.cs` | Output de register/login: Token, ExpiresAt (DateTime) |
-| Crear | `Application/Abstractions/Common/Result.cs` | Tipo `Result<T>` con métodos estáticos `Success(T)` y `Failure(Error)` |
-| Crear | `Application/Abstractions/Common/Error.cs` | Tipo `Error` con `Code` (string) y `Message` (string) |
+| Acción | Path                                                 | Razón                                                                                                                |
+| ------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Crear  | `Application/Projects/Dtos/ProjectSummaryDto.cs`     | DTO para el grid (forma flashcard): Id, Slug, Title, UrlThumbnail, Description                                       |
+| Crear  | `Application/Projects/Dtos/ProjectDetailDto.cs`      | DTO para el detalle (forma blog): todos los campos del Summary + Content + State (como string), CreatedAt, UpdatedAt |
+| Crear  | `Application/Projects/Dtos/ProjectListDto.cs`        | DTO envolvente con paginación: Items (lista de Summary), Total, Page, PageSize                                       |
+| Crear  | `Application/Projects/Dtos/CreateProjectRequest.cs`  | Input para `CreateProjectCommand`: Title, Slug, UrlThumbnail, Description, Content                                   |
+| Crear  | `Application/Projects/Dtos/UpdateProjectRequest.cs`  | Input para `UpdateProjectCommand`: mismos campos del Create + Id (para saber cuál actualizar)                        |
+| Crear  | `Application/Authentication/Dtos/RegisterRequest.cs` | Input para `RegisterCommand`: Email, Password                                                                        |
+| Crear  | `Application/Authentication/Dtos/LoginRequest.cs`    | Input para `LoginQuery`: Email, Password                                                                             |
+| Crear  | `Application/Authentication/Dtos/AuthResponse.cs`    | Output de register/login: Token, ExpiresAt (DateTime)                                                                |
+| Crear  | `Application/Abstractions/Common/Result.cs`          | Tipo `Result<T>` con métodos estáticos `Success(T)` y `Failure(Error)`                                               |
+| Crear  | `Application/Abstractions/Common/Error.cs`           | Tipo `Error` con `Code` (string) y `Message` (string)                                                                |
 
 **Sobre los DTOs de input y validación:** los requests (`CreateProjectRequest`, `LoginRequest`, etc.) NO llevan atributos de validación todavía. La validación rica se hace con FluentValidation en F7. Por ahora los DTOs son solo "forma" (data). Si querés, podés poner `[Required]` con DataAnnotations como defensa básica, pero no es obligatorio.
 
@@ -604,10 +604,10 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 - ❌ NO tocar nada de `Domain/`, `Infrastructure/`, `Api/`.
 
 **Checkpoint:**
-- [ ] Los DTOs compilan.
-- [ ] Todos son `record` o `sealed record`.
-- [ ] `Result<T>` es genérico y permite construir éxito/fallo sin métodos custom por Use Case.
-- [ ] `AuthResponse` no expone el password ni el hash.
+- [x] Los DTOs compilan.
+- [x] Todos son `record` o `sealed record`.
+- [x] `Result<T>` es genérico y permite construir éxito/fallo sin métodos custom por Use Case.
+- [x] `AuthResponse` no expone el password ni el hash.
 
 **Cuando te trabes, preguntame sobre:**
 - Cómo definir un `record` con parámetros opcionales en C#.

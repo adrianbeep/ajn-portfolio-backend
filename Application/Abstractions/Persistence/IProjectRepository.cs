@@ -1,7 +1,5 @@
-﻿using Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Application.Abstractions.Common;
+using Domain.Entities;
 
 namespace Application.Abstractions.Persistence
 {
@@ -15,7 +13,7 @@ namespace Application.Abstractions.Persistence
 
         Task<List<Project>> GetAllAndDeletedAsync(CancellationToken ct = default);
 
-        Task AddAsync(Project project, CancellationToken ct = default);
+        Task<Result> AddAsync(Project project, CancellationToken ct = default);
 
         Task UpdateAsync(Project project, CancellationToken ct = default);
 

@@ -1,7 +1,5 @@
-﻿using Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Application.Abstractions.Common;
+using Domain.Entities;
 
 namespace Application.Abstractions.Persistence
 {
@@ -11,7 +9,7 @@ namespace Application.Abstractions.Persistence
 
         Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default);
 
-        Task AddAsync(ApplicationUser applicationUser, string password, CancellationToken ct = default);
+        Task<Result> AddAsync(ApplicationUser applicationUser, string password, CancellationToken ct = default);
 
         Task<bool> CheckPasswordAsync(ApplicationUser applicationUser, string password, CancellationToken ct = default);
     }
