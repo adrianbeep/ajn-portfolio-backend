@@ -1,0 +1,24 @@
+﻿using Domain.Entities;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace Application.Abstractions.Persistence
+{
+    public interface IProjectRepository
+    {
+        Task<Project?> GetByIdAsync(Guid id, CancellationToken ct = default);
+
+        Task<Project?> GetBySlugAsync(string slug, CancellationToken ct = default);
+
+        Task<List<Project>> GetAllNotDeletedAsync(CancellationToken ct = default);
+
+        Task<List<Project>> GetAllAndDeletedAsync(CancellationToken ct = default);
+
+        Task AddAsync(Project project, CancellationToken ct = default);
+
+        Task UpdateAsync(Project project, CancellationToken ct = default);
+
+        Task RemoveAsync(Project project, CancellationToken ct = default);
+    }
+}
