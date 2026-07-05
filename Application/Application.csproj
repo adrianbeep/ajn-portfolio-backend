@@ -11,15 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Authentication\Commands\Register\" />
-    <Folder Include="Authentication\Queries\Login\" />
     <Folder Include="Behaviors\" />
-    <Folder Include="Projects\Commands\CreateProject\" />
-    <Folder Include="Projects\Commands\DeleteProject\" />
-    <Folder Include="Projects\Commands\RestoreProject\" />
-    <Folder Include="Projects\Commands\UpdateProject\" />
-    <Folder Include="Projects\Queries\GetProjects\" />
-    <Folder Include="Projects\Queries\GetProjectsBySlug\" />
   </ItemGroup>
 
 </Project>

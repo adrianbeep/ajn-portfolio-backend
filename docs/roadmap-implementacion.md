@@ -633,37 +633,37 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 
 **Archivos a tocar:**
 
-| Acción | Path | Razón |
-|--------|------|-------|
-| Crear | `tests/Application.Tests/Application.Tests.csproj` | Proyecto de tests |
-| Crear | `tests/Application.Tests/Fakes/FakeProjectRepository.cs` | Fake para tests de handlers de Project |
-| Crear | `tests/Application.Tests/Fakes/FakeUserRepository.cs` | Fake para tests de handlers de Auth |
-| Crear | `tests/Application.Tests/Fakes/FakeJwtTokenGenerator.cs` | Stub que devuelve un token fake |
-| Crear | `tests/Application.Tests/Projects/GetProjects/GetProjectsQueryHandlerTests.cs` | Tests del listado (feliz + vacío) |
-| Crear | `tests/Application.Tests/Projects/GetProjectBySlug/GetProjectBySlugQueryHandlerTests.cs` | Tests del detalle (feliz + no encontrado) |
-| Crear | `tests/Application.Tests/Projects/CreateProject/CreateProjectCommandHandlerTests.cs` | Tests de creación (feliz) |
-| Crear | `tests/Application.Tests/Projects/UpdateProject/UpdateProjectCommandHandlerTests.cs` | Tests de actualización (feliz + no encontrado) |
-| Crear | `tests/Application.Tests/Projects/DeleteProject/DeleteProjectCommandHandlerTests.cs` | Tests de soft delete (feliz + no encontrado) |
-| Crear | `tests/Application.Tests/Projects/RestoreProject/RestoreProjectCommandHandlerTests.cs` | Tests de restore (feliz + no encontrado) |
-| Crear | `tests/Application.Tests/Authentication/Register/RegisterCommandHandlerTests.cs` | Tests de register (feliz + email duplicado) |
-| Crear | `tests/Application.Tests/Authentication/Login/LoginQueryHandlerTests.cs` | Tests de login (feliz + credenciales inválidas) |
-| Crear | `Application/Projects/Queries/GetProjects/GetProjectsQuery.cs` | Query inmutable (record) |
-| Crear | `Application/Projects/Queries/GetProjects/GetProjectsQueryHandler.cs` | Handler como clase |
-| Crear | `Application/Projects/Queries/GetProjectBySlug/GetProjectBySlugQuery.cs` | Query |
-| Crear | `Application/Projects/Queries/GetProjectBySlug/GetProjectBySlugQueryHandler.cs` | Handler |
-| Crear | `Application/Projects/Commands/CreateProject/CreateProjectCommand.cs` | Command inmutable |
-| Crear | `Application/Projects/Commands/CreateProject/CreateProjectCommandHandler.cs` | Handler |
-| Crear | `Application/Projects/Commands/UpdateProject/UpdateProjectCommand.cs` | Command |
-| Crear | `Application/Projects/Commands/UpdateProject/UpdateProjectCommandHandler.cs` | Handler |
-| Crear | `Application/Projects/Commands/DeleteProject/DeleteProjectCommand.cs` | Command |
-| Crear | `Application/Projects/Commands/DeleteProject/DeleteProjectCommandHandler.cs` | Handler |
-| Crear | `Application/Projects/Commands/RestoreProject/RestoreProjectCommand.cs` | Command |
-| Crear | `Application/Projects/Commands/RestoreProject/RestoreProjectCommandHandler.cs` | Handler |
-| Crear | `Application/Authentication/Commands/Register/RegisterCommand.cs` | Command |
-| Crear | `Application/Authentication/Commands/Register/RegisterCommandHandler.cs` | Handler |
-| Crear | `Application/Authentication/Queries/Login/LoginQuery.cs` | Query |
-| Crear | `Application/Authentication/Queries/Login/LoginQueryHandler.cs` | Handler |
-| Modificar | `ajn-portfolio-backend.slnx` | Agregar el proyecto de tests |
+| Acción    | Path                                                                                     | Razón                                           |
+| --------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Crear     | `tests/Application.Tests/Application.Tests.csproj`                                       | Proyecto de tests                               |
+| Crear     | `tests/Application.Tests/Fakes/FakeProjectRepository.cs`                                 | Fake para tests de handlers de Project          |
+| Crear     | `tests/Application.Tests/Fakes/FakeUserRepository.cs`                                    | Fake para tests de handlers de Auth             |
+| Crear     | `tests/Application.Tests/Fakes/FakeJwtTokenGenerator.cs`                                 | Stub que devuelve un token fake                 |
+| Crear     | `tests/Application.Tests/Projects/GetProjects/GetProjectsQueryHandlerTests.cs`           | Tests del listado (feliz + vacío)               |
+| Crear     | `tests/Application.Tests/Projects/GetProjectBySlug/GetProjectBySlugQueryHandlerTests.cs` | Tests del detalle (feliz + no encontrado)       |
+| Crear     | `tests/Application.Tests/Projects/CreateProject/CreateProjectCommandHandlerTests.cs`     | Tests de creación (feliz)                       |
+| Crear     | `tests/Application.Tests/Projects/UpdateProject/UpdateProjectCommandHandlerTests.cs`     | Tests de actualización (feliz + no encontrado)  |
+| Crear     | `tests/Application.Tests/Projects/DeleteProject/DeleteProjectCommandHandlerTests.cs`     | Tests de soft delete (feliz + no encontrado)    |
+| Crear     | `tests/Application.Tests/Projects/RestoreProject/RestoreProjectCommandHandlerTests.cs`   | Tests de restore (feliz + no encontrado)        |
+| Crear     | `tests/Application.Tests/Authentication/Register/RegisterCommandHandlerTests.cs`         | Tests de register (feliz + email duplicado)     |
+| Crear     | `tests/Application.Tests/Authentication/Login/LoginQueryHandlerTests.cs`                 | Tests de login (feliz + credenciales inválidas) |
+| Crear     | `Application/Projects/Queries/GetProjects/GetProjectsQuery.cs`                           | Query inmutable (record)                        |
+| Crear     | `Application/Projects/Queries/GetProjects/GetProjectsQueryHandler.cs`                    | Handler como clase                              |
+| Crear     | `Application/Projects/Queries/GetProjectBySlug/GetProjectBySlugQuery.cs`                 | Query                                           |
+| Crear     | `Application/Projects/Queries/GetProjectBySlug/GetProjectBySlugQueryHandler.cs`          | Handler                                         |
+| Crear     | `Application/Projects/Commands/CreateProject/CreateProjectCommand.cs`                    | Command inmutable                               |
+| Crear     | `Application/Projects/Commands/CreateProject/CreateProjectCommandHandler.cs`             | Handler                                         |
+| Crear     | `Application/Projects/Commands/UpdateProject/UpdateProjectCommand.cs`                    | Command                                         |
+| Crear     | `Application/Projects/Commands/UpdateProject/UpdateProjectCommandHandler.cs`             | Handler                                         |
+| Crear     | `Application/Projects/Commands/DeleteProject/DeleteProjectCommand.cs`                    | Command                                         |
+| Crear     | `Application/Projects/Commands/DeleteProject/DeleteProjectCommandHandler.cs`             | Handler                                         |
+| Crear     | `Application/Projects/Commands/RestoreProject/RestoreProjectCommand.cs`                  | Command                                         |
+| Crear     | `Application/Projects/Commands/RestoreProject/RestoreProjectCommandHandler.cs`           | Handler                                         |
+| Crear     | `Application/Authentication/Commands/Register/RegisterCommand.cs`                        | Command                                         |
+| Crear     | `Application/Authentication/Commands/Register/RegisterCommandHandler.cs`                 | Handler                                         |
+| Crear     | `Application/Authentication/Queries/Login/LoginQuery.cs`                                 | Query                                           |
+| Crear     | `Application/Authentication/Queries/Login/LoginQueryHandler.cs`                          | Handler                                         |
+| Modificar | `ajn-portfolio-backend.slnx`                                                             | Agregar el proyecto de tests                    |
 
 **Forma de los handlers (descripción, NO código):**
 
