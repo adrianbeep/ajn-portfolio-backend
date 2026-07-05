@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,12 +7,6 @@ namespace Domain.Entities
 {
     public class Project
     {
-        public enum ProjectState
-        {
-            Active,
-            Inactive
-        }
-
         public Guid Id { get; private set; }
         public string Title { get; private set; } = string.Empty;
         public string Slug { get; private set; } = string.Empty;
