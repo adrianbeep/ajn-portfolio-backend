@@ -1,6 +1,5 @@
 namespace Application.Projects.Queries.GetProjects;
 
-public class GetProjectsQuery
-{
-    
-}
+public sealed record GetProjectsQuery(
+    int Page,
+    int PageSize);

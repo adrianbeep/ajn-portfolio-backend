@@ -1,6 +1,8 @@
 namespace Application.Projects.Commands.CreateProject;
 
-public class CreateProjectCommand
-{
-    
-}
+public sealed record CreateProjectCommand(
+    string Title,
+    string Slug,
+    string UrlThumbnail,
+    string Description,
+    string Content);

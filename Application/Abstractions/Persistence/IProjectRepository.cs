@@ -9,9 +9,9 @@ namespace Application.Abstractions.Persistence
 
         Task<Project?> GetBySlugAsync(string slug, CancellationToken ct = default);
 
-        Task<List<Project>> GetAllNotDeletedAsync(CancellationToken ct = default);
+        Task<IReadOnlyList<Project>> GetAllNotDeletedAsync(CancellationToken ct = default);
 
-        Task<List<Project>> GetAllAndDeletedAsync(CancellationToken ct = default);
+        Task<IReadOnlyList<Project>> GetAllAndDeletedAsync(CancellationToken ct = default);
 
         Task<Result> AddAsync(Project project, CancellationToken ct = default);
 

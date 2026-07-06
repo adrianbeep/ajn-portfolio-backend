@@ -1,6 +1,3 @@
 namespace Application.Projects.Queries.GetProjectsBySlug;
 
-public class GetProjectBySlugQueryHandler
-{
-    
-}
+public sealed record GetProjectBySlugQuery(string Slug);
