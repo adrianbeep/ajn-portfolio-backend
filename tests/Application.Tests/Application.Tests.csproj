@@ -16,4 +16,9 @@
     <PackageReference Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\Application\Application.csproj" />
+    <ProjectReference Include="..\..\Domain\Domain.csproj" />
+  </ItemGroup>
+
 </Project>
