@@ -15,8 +15,12 @@ namespace Application.Abstractions.Persistence
 
         Task<Result> AddAsync(Project project, CancellationToken ct = default);
 
-        Task UpdateAsync(Project project, CancellationToken ct = default);
+        Task<Result> UpdateAsync(Project project, CancellationToken ct = default);
 
-        Task RemoveAsync(Project project, CancellationToken ct = default);
+        Task<Result> SoftDeleteAsync(Project project, CancellationToken ct = default);
+        
+        Task<Result> RestoreAsync(Project project, CancellationToken ct = default);
+        
+        Task<Result> HardDeleteAsync(Project project, CancellationToken ct = default);
     }
 }
