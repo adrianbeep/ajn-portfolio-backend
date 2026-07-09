@@ -77,10 +77,13 @@ Cada fase es ejecutada **por vos**, una a la vez. Si te trabás en algún paso, 
 | D15 | Storage del JWT en el cliente | Cookie `httpOnly` + `Secure` + `SameSite=Strict` | Estándar SSR-safe, mitiga XSS | Requiere configurar CORS con `AllowCredentials = true` y origen explícito |
 | D16 | MediatR scope | Aplicado a TODOS los use cases (no solo a los nuevos de admin) | Consistencia total en el repo; se aprende una sola vez el patrón | F5 escribe handlers como clases, F6 los refactoriza a `IRequestHandler` |
 | D17 | Pipeline Behaviors en V1 | `ValidationBehavior`, `LoggingBehavior`, `AuthorizationBehavior`, `AuditBehavior` | Cross-cutting concerns reales que se repiten en cada Command del admin | Más clases a mantener; se amortiza con el primer Command nuevo |
-| D18 | Soft delete | Sí, desde V1. `DELETE` setea `DeletedAt`, hay endpoint `POST .../restore`. Filtro global con `HasQueryFilter` | El admin necesita poder borrar y arrepentirse | El listado público filtra `DeletedAt != null` automáticamente |
+| D18 | Soft delete | Sí, desde V1. `DELETE` setea `DeletedAt`, hay endpoint `POST .../restore`. Filtro global con `HasQueryFilter`. La lógica de setear/limpiar `DeletedAt` vive en la **entidad** (`Project.MarkAsDeleted` / `Project.Restore`); el repo es delgado y delega (D22) | El admin necesita poder borrar y arrepentirse | El listado público filtra `DeletedAt != null` automáticamente |
 | D19 | CORS | Configurado desde F14 | El frontend existe y necesita llamar al backend desde otro origen | Sumar config de orígenes permitidos |
 | D20 | Storage de imágenes | URLs externas (no hay endpoint de upload) | El admin pega URLs de Cloudinary/Imgur/lo que sea. El backend no toca storage | Las imágenes inline en el `Content` markdown funcionan vía URL |
 | D21 | Idioma del dominio | Inglés (`Project`, `ApplicationUser`, `ProjectState`, etc.) | Convención del proyecto, no se mezcla español-inglés en el código | Los commits y mensajes pueden ser en español si querés |
+| D22 | Modelo de `Project` | **Semi-rico** (estándar DDD del mercado): entidad con setters `private`, métodos de comportamiento públicos para reglas de negocio (`MarkAsDeleted`, `Restore`, `SetActive`, `SetInactive`). El repo es **delgado**: delega al dominio y persiste. El handler es **orquestador**: llama al repo, propaga errores, NO manipula la entidad directamente. | Encapsulación total (nadie toca `DeletedAt` desde fuera), reglas de soft-delete testeables sin EF, repo sin lógica de negocio, handler limpio. | Hay que mantener `IProjectRepository.SoftDeleteAsync`/`RestoreAsync` aunque la lógica viva en la entidad — el repo centraliza la operación para que el handler no llame a la entidad y al repo por separado. |
+| D23 | Forma de `DeleteProjectCommand` / `RestoreProjectCommand` | Solo `string Slug` (no `Id` ni nada más) | El endpoint admin es `DELETE /admin/projects/{slug}` y `POST /admin/projects/{slug}/restore` (l.1310-1311 del propio roadmap). El `Id` es interno, se obtiene con `GetBySlugAsync` desde el handler. Evita redundancia 1-a-1 entre `Id` y `Slug` | Si alguna vez la UI/admin conoce el `Id` y quiere evitar el lookup, se cambia la firma. Es un único punto de contacto |
+| D24 | Propagación de `Failure` desde el repo en Command handlers | **Sí**, los handlers verifican `!result.IsSuccess` y **propagan el `Error` del repo tal cual** (`return result;`) antes de llamar a `SaveChangesAsync` | Permite que el repo reporte fallos reales (ej: restricción única de `Slug` en EF, conflicto de concurrencia) sin que el handler devuelva un `Success` mentiroso. **No** se inventan códigos de error nuevos en el handler: si el repo sabe por qué falló, su `Error` ya tiene el código correcto. Coherente con D7 (`Result<T>` explícito, sin excepciones de control) | Más líneas en cada handler. El precio vale la pena: nunca un `Success` falso y nunca se pierde información del repo |
 
 ---
 
@@ -382,9 +385,10 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 **Concepto teórico:**
 - **`IdentityUser<TKey>`**: clase base de Microsoft para usuarios. Ya tiene `Id`, `UserName`, `Email`, `PasswordHash`, `SecurityStamp`, etc. Nuestra clase de usuario debe extenderla para integrarse con Identity.
 - **Migración de validaciones**: la entidad `User` vieja tiene regex de email, length limit, validación de password hash. Esas invariantes se mueven al Command handler con FluentValidation (en F7). La entidad queda más limpia y la validación es testeable sin instanciar la entidad.
+- **Modelo semi-rico de `Project` (D22)**: la entidad tiene setters `private` y expone métodos de comportamiento para las reglas de negocio: `SetActive`/`SetInactive` (cambian `ProjectState` + `UpdatedAt`) y `MarkAsDeleted`/`Restore` (manejan `DeletedAt` + `UpdatedAt`, idempotentes). El repo es delgado: delega a esos métodos y persiste. El handler NO manipula la entidad directamente, llama al repo.
 
 **Estado inicial:**
-- `Domain/Entities/Project.cs` con setters privados, validaciones en constructor, métodos `SetActive/SetInactive`.
+- `Domain/Entities/Project.cs` con setters `private`, validaciones en constructor, métodos de comportamiento `SetActive`/`SetInactive` (cambian `ProjectState` + `UpdatedAt`, NO tocan `DeletedAt`) y los métodos de soft-delete/restore que se detallan abajo.
 - `Domain/Entities/User.cs` con validación de email/password hash en constructor.
 - `Domain/Abstractions/IRepository.cs` con CRUD genérico.
 - `Domain/Domain.csproj` apuntando a `net10.0`.
@@ -421,7 +425,7 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 
 **Checkpoint:**
 - [x] `dotnet build` verde.
-- [x] `Project.cs` no se modifica; mantiene sus campos actuales (incluido `UrlThumbnail`).
+- [x] `Project.cs` queda con setters `private` y métodos de comportamiento `SetActive`/`SetInactive`/`MarkAsDeleted`/`Restore` (D22, modelo semi-rico). `SetActive`/`SetInactive` NO tocan `DeletedAt`.
 - [x] `ApplicationUser.cs` compila y extiende `IdentityUser<Guid>`.
 - [x] `Domain/Abstractions/` está vacío o eliminado.
 - [x] No hay rastros del viejo `User.cs`.
@@ -521,7 +525,7 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 
 **Contratos que vas a definir (descripción):**
 
-- **`IProjectRepository`**: métodos async para `GetByIdAsync(Guid)` que devuelve `Project?`, `GetBySlugAsync(string)` que devuelve `Project?`, `ListAsync` (con filtros internos: solo no soft-deleted) que devuelve lista de solo lectura, `ListIncludingDeletedAsync` (para el admin), `AddAsync(Project)`, `UpdateAsync(Project)`, `RemoveAsync(Project)` (que en realidad setea `DeletedAt`, no borra).
+- **`IProjectRepository`**: métodos async para `GetByIdAsync(Guid)` que devuelve `Project?`, `GetBySlugAsync(string)` que devuelve `Project?`, `ListAsync` (con filtros internos: solo no soft-deleted) que devuelve lista de solo lectura, `ListIncludingDeletedAsync` (para el admin), `AddAsync(Project)` que devuelve `Task<Result>`, `UpdateAsync(Project)`, **`SoftDeleteAsync(Project, ct)`** que delega a `Project.MarkAsDeleted()` y devuelve `Task<Result>`, **`RestoreAsync(Project, ct)`** que delega a `Project.Restore()` y devuelve `Task<Result>`, **`HardDeleteAsync(Project, ct)`** que hace `Remove` real y devuelve `Task<Result>`. La entidad `Project` es la dueña de las reglas de soft-delete/restore (D22, modelo semi-rico); el repo es delgado.
 - **`IUserRepository`**: métodos async para `GetByEmailAsync(string)` que devuelve `ApplicationUser?`, `ExistsByEmailAsync(string)` que devuelve `bool`, `AddAsync(ApplicationUser, string password)` que devuelve `Result` (puede fallar si el email ya existe), `CheckPasswordAsync(ApplicationUser, string password)` que devuelve `bool`. **No** expone `UserManager` directamente.
 - **`IUnitOfWork`**: método `SaveChangesAsync` que devuelve el número de cambios.
 - **`IJwtTokenGenerator`**: método `GenerateToken(ApplicationUser)` que devuelve un string (el JWT firmado) más la fecha de expiración. Opcionalmente acepta claims extra.
@@ -540,6 +544,7 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 - ❌ Hacer que `IUserRepository` devuelva `IEnumerable<T>` cuando podría devolver `IReadOnlyList<T>`.
 - ❌ Olvidar el `CancellationToken ct = default` en métodos async públicos.
 - ❌ Crear `IPasswordHasher` propio y luego no usarlo.
+- ❌ Nombrar `RemoveAsync` al soft-delete (es engañoso). Usá `SoftDeleteAsync` / `RestoreAsync` / `HardDeleteAsync` con nombres honestos (D22).
 
 **Scope:**
 - ✅ Crear `Application/`, modificar la `.slnx`, agregar referencia a `Domain` en `Application.csproj`.
@@ -670,12 +675,17 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 - **Query Handler**: recibe el repositorio y (opcionalmente) `IUnitOfWork` por constructor. Un único método público `HandleAsync(Query query, CancellationToken ct = default)` que devuelve `Task<Result<Dto>>`. Lee del repo, mapea a DTO, devuelve `Result.Success(dto)` o `Result.Failure(error)`.
 - **Command Handler**: misma forma pero llama al método de escritura del repo. Si el repo devuelve un Id, el handler lo envuelve en `Result.Success(id)`. Si la operación no se puede (e.g., email duplicado), devuelve `Result.Failure(error)`.
 - **Convención de nombres**: el método del handler es `HandleAsync` (todavía sin MediatR, así que agregamos el sufijo). En F6 lo renombramos a `Handle` cuando implementemos `IRequestHandler`.
+- **Handlers de Delete/Restore/Create en particular** (modelo semi-rico, D22):
+  - `DeleteProjectCommandHandler` recibe `DeleteProjectCommand(Slug)`. Hace `GetBySlugAsync`; si devuelve `null` → `Result.Failure(new Error("ProjectNotFound", ...))`. Si existe, llama `_repository.SoftDeleteAsync(project, ct)`; **propaga el `Result` del repo** tal cual (`return softDeleteResult;`) si `!softDeleteResult.IsSuccess` (D24). Llama `_uow.SaveChangesAsync(ct)`. Devuelve `Result.Success()`. NO inventa códigos de error nuevos.
+  - `RestoreProjectCommandHandler` análogo pero con `RestoreAsync`.
+  - `CreateProjectCommandHandler` construye el `Project` **separado del repo** (necesitamos la referencia para leer `Id` post-creación). Llama `_repository.AddAsync(project, ct)`; propaga el `Result` (D24). Llama `_uow.SaveChangesAsync(ct)`. Devuelve `Result<Guid>.Success(project.Id)`.
 
 **Forma de los Query/Command records (descripción):**
 
 - `record` con los parámetros necesarios.
 - Inmutable (todas las propiedades con `init`).
 - Sin comportamiento. Solo data.
+- `DeleteProjectCommand` y `RestoreProjectCommand` reciben **solo `string Slug`** (D23): no `Id`, no nada más. El handler hace el lookup por slug.
 
 **Errores comunes:**
 - ❌ Llamar al repositorio desde el handler de tests con mocks verbosos. Un fake es ~30 líneas y más claro.
@@ -684,6 +694,9 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 - ❌ Olvidar `CancellationToken` en la firma pública.
 - ❌ Olvidar el `_uow.SaveChangesAsync(ct)` al final de un Command que escribe.
 - ❌ Hardcodear mensajes de error en español dentro del handler. Mejor: códigos de error constantes (e.g., `ProjectNotFound`) y mensajes parametrizados.
+- ❌ **Mutar la entidad en el handler** para soft-delete (ej: `project.DeletedAt = DateTime.UtcNow;` directo). La mutación vive en la entidad (`Project.MarkAsDeleted()`), pero el handler no la llama — pasa por el repo (`_repository.SoftDeleteAsync(project, ct)`) que es quien centraliza la operación (D22).
+- ❌ Asumir que `AddAsync` devuelve la entidad. Devuelve `Task<Result>`. Para leer el `Id` post-creación, **construí el `Project` antes** de llamar al repo y conservá la referencia.
+- ❌ Devolver `Result.Success` sin chequear el `Failure` que puede llegar del repo. Siempre `if (!result.IsSuccess) return result;` antes de `SaveChangesAsync` (D24: propagación directa, **no** inventar `new Error(...)` con código propio).
 
 **Decisiones a tomar:**
 - **D5.1 — Convención del método del handler.** `HandleAsync` por ahora (cambia a `Handle` en F6 cuando usamos MediatR). **Recomendado `HandleAsync`** por ahora; es explícito.
@@ -697,7 +710,7 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 
 **Checkpoint:**
 - [ ] `dotnet build` verde.
-- [ ] `dotnet test` verde (mínimo 14 tests: 2 por cada uno de los 7 handlers, contando feliz + caso de error).
+- [ ] `dotnet test` verde (mínimo 14 tests: 2 por cada uno de los 7 handlers, contando feliz + caso de error; idealmente también un test del Failure propagado del repo en `Create`/`Delete`/`Restore` para cubrir D24).
 - [ ] Los handlers no referencian EF Core ni Identity ni ningún paquete externo más allá de los de Application.
 - [ ] Los handlers de Commands llaman a `_uow.SaveChangesAsync(ct)` al final.
 
@@ -993,13 +1006,15 @@ ValidationBehavior  → AuthorizationBehavior → LoggingBehavior → AuditBehav
 
 **Forma del `ProjectRepository` (descripción):**
 - Inyecta `AppDbContext` por constructor.
-- `GetByIdAsync`: query con filtro por Id. Devuelve `Project?`.
-- `GetBySlugAsync`: query con filtro por Slug. `AsNoTracking()`.
+- `GetByIdAsync`: query con filtro por Id. Devuelve `Project?`. **Sin** `AsNoTracking()` (si la entidad se va a mutar después, EF debe trackearla).
+- `GetBySlugAsync`: query con filtro por Slug. **Sin** `AsNoTracking()` porque el handler la va a pasar a `SoftDeleteAsync`/`RestoreAsync`/`UpdateAsync` y los cambios deben persistir con `SaveChangesAsync`.
 - `ListAsync`: query con filtro `DeletedAt == null`. Ordenar por `CreatedAt` descendente. `AsNoTracking()`.
 - `ListIncludingDeletedAsync`: igual pero sin el filtro.
-- `AddAsync`: `_db.Projects.AddAsync(project, ct)`.
-- `UpdateAsync`: `_db.Projects.Update(project)` (la entidad ya está tracked o se attacha).
-- `RemoveAsync`: NO borra. Setea `DeletedAt = DateTime.UtcNow` y llama a `UpdateAsync`. O usa un método custom en el dominio (`Project.MarkAsDeleted()`).
+- `AddAsync(Project, ct)`: `_db.Projects.AddAsync(project, ct)`. Devuelve `Task<Result>` (D24: puede fallar por restricción única de `Slug`, índice, etc.). Si EF reporta error, devolver `Result.Failure(new Error("PersistenceError", ex.Message))`.
+- `UpdateAsync(Project)`: `_db.Projects.Update(project)` (la entidad ya está tracked o se attacha).
+- `SoftDeleteAsync(Project, ct)` (D22, repo delgado): llama a `project.MarkAsDeleted()` (la entidad es la dueña de la regla: setea `DeletedAt` + `UpdatedAt`, idempotente). Devuelve `Task<Result>`. NO llama a `SaveChangesAsync`.
+- `RestoreAsync(Project, ct)` (D22): llama a `project.Restore()` (la entidad limpia `DeletedAt`, actualiza `UpdatedAt`, idempotente). Devuelve `Task<Result>`.
+- `HardDeleteAsync(Project, ct)` (D22): `_db.Projects.Remove(project)`, devuelve `Task<Result>`. NO hay método en la entidad porque es una operación puramente de persistencia, sin reglas de negocio.
 
 **Forma del `UserRepository` (descripción):**
 - Inyecta `UserManager<ApplicationUser>` por constructor.
@@ -1033,6 +1048,7 @@ ValidationBehavior  → AuthorizationBehavior → LoggingBehavior → AuditBehav
 - **D9.1 — ¿Comparar slug case-sensitive o case-insensitive?** Case-sensitive. La entidad `Project` ya guarda el slug normalizado a lowercase en el constructor. Documentar en el handler.
 - **D9.2 — ¿Dónde vive el `CurrentUser`?** En `Infrastructure/Authentication/` (lee del HttpContext, depende de ASP.NET Core).
 - **D9.3 — Longitud mínima del JWT Secret.** Recomendado: 32 caracteres mínimo. Validar en startup y lanzar excepción clara si es muy corto.
+- **D9.4 — ¿`SoftDeleteAsync`/`RestoreAsync`/`HardDeleteAsync` llaman a `SaveChangesAsync`?** **No**. Devuelven `Task<Result>` y dejan la persistencia al `IUnitOfWork` que llama el handler al final. Mantiene la unidad de trabajo.
 
 **Errores comunes:**
 - ❌ Devolver `IQueryable<T>` desde el repo. Los filtros los hace el repo.
@@ -1041,6 +1057,7 @@ ValidationBehavior  → AuthorizationBehavior → LoggingBehavior → AuditBehav
 - ❌ Comparar el bootstrap token con `==` (vulnerable a timing attacks).
 - ❌ Hardcodear el JWT Secret en código. Leerlo de configuración.
 - ❌ No validar la longitud del JWT Secret en startup → tokens firmados con clave débil.
+- ❌ Llamar `RemoveAsync` desde un handler de soft-delete (la firma ya no existe; usá `SoftDeleteAsync` o `HardDeleteAsync` según la intención, D22).
 
 **Scope:**
 - ✅ Crear los archivos listados en `Infrastructure/` y `tests/Infrastructure.Tests/`.
@@ -1539,4 +1556,4 @@ ValidationBehavior  → AuthorizationBehavior → LoggingBehavior → AuditBehav
 
 ---
 
-*Última actualización: roadmap reescrito para incluir admin completo + auth + CQRS + MediatR.*
+*Última actualización: refactor del modelo `Project` a **semi-rico** (D22). La entidad encapsula las reglas de soft-delete/restore con `MarkAsDeleted()` y `Restore()`; el repo `ProjectRepository` es delgado y delega a esos métodos; el handler propaga el `Error` del repo tal cual sin inventar códigos. `IProjectRepository` mantiene `SoftDeleteAsync` / `RestoreAsync` / `HardDeleteAsync` (sin `RemoveAsync`). `GetBySlugAsync` sin `AsNoTracking` para que los cambios en la entidad se persistan vía `SaveChangesAsync`.*
