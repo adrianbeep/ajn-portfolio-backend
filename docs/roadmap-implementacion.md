@@ -709,10 +709,10 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 - ❌ NO introducir MediatR todavía.
 
 **Checkpoint:**
-- [ ] `dotnet build` verde.
-- [ ] `dotnet test` verde (mínimo 14 tests: 2 por cada uno de los 7 handlers, contando feliz + caso de error; idealmente también un test del Failure propagado del repo en `Create`/`Delete`/`Restore` para cubrir D24).
-- [ ] Los handlers no referencian EF Core ni Identity ni ningún paquete externo más allá de los de Application.
-- [ ] Los handlers de Commands llaman a `_uow.SaveChangesAsync(ct)` al final.
+- [x] `dotnet build` verde.
+- [x] `dotnet test` verde (mínimo 14 tests: 2 por cada uno de los 7 handlers, contando feliz + caso de error; idealmente también un test del Failure propagado del repo en `Create`/`Delete`/`Restore` para cubrir D24).
+- [x] Los handlers no referencian EF Core ni Identity ni ningún paquete externo más allá de los de Application.
+- [x] Los handlers de Commands llaman a `_uow.SaveChangesAsync(ct)` al final.
 
 **Cuando te trabes, preguntame sobre:**
 - Cómo escribir un `FakeProjectRepository` que respete `CancellationToken` aunque no lo use.
