@@ -1,6 +1,3 @@
 namespace Application.Authentication.Commands.Register;
 
-public class RegisterCommand
-{
-    
-}
+public sealed record RegisterCommand(string Email, string Password);

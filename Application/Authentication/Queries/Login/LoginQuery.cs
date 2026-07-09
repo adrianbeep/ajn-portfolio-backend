@@ -1,6 +1,4 @@
 namespace Application.Authentication.Queries.Login;
 
-public class LoginQuery
-{
-    
-}
+public sealed record LoginQuery(string Email, string Password);
+
