@@ -1,6 +1,5 @@
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
-using Application.Projects.Dtos;
 using Domain.Entities;
 
 namespace Application.Projects.Commands.CreateProject;
@@ -17,23 +16,22 @@ public class CreateProjectCommandHandler
     }
 
     public async Task<Result<Guid>> HandleAsync(
-        CreateProjectRequest query, 
+        CreateProjectCommand command, 
         CancellationToken ct = default)
     {
-        var project = await _repository.AddAsync(
-            new Project(query.Title,
-            query.Slug,
-            query.UrlThumbnail,
-            query.Description,
-            query.Content));
+        var project = new Project(
+            command.Title,
+            command.Slug,
+            command.UrlThumbnail,
+            command.Description,
+            command.Content);
+        
+        var addResult = await _repository.AddAsync(project, ct);
+        
+        if (!addResult.IsSuccess)
+            return Result<Guid>.Failure(addResult.Error);
 
-        if (project is null)
-            return Result<Guid>.Failure(
-                new Error("ProjectNotCreated",
-                $"Project with title '{query.Title}' was not created"));
-
-        _uow.SaveChangesAsync(ct);
-        return Result<project.Id>.Success(
-            );
+        await _uow.SaveChangesAsync(ct);
+        return Result<Guid>.Success(project.Id);
     }
 }

@@ -1,6 +1,3 @@
 namespace Application.Projects.Commands.RestoreProject;
 
-public class RestoreProjectCommand
-{
-    
-}
+public sealed record RestoreProjectCommand(string Slug);

@@ -1,6 +1,3 @@
 namespace Application.Projects.Commands.DeleteProject;
 
-public class DeleteProjectCommand
-{
-    
-}
+public sealed record DeleteProjectCommand(string Slug);
