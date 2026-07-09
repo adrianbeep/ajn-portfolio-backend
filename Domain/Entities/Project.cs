@@ -54,6 +54,36 @@ namespace Domain.Entities
             State = ProjectState.Active;
             UpdatedAt = DateTime.UtcNow;
         }
+        
+        public void MarkAsDeleted()
+        {
+            if (DeletedAt is not null) return;     // idempotente
+            DeletedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void Restore()
+        {
+            if (DeletedAt is null) return;         // idempotente
+            DeletedAt = null;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void Update(
+            string title,
+            string description,
+            string urlThumbnail,
+            string content)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                throw new ArgumentException("Title cannot be empty.", nameof(title));
+            
+            Title = title;
+            Description = description;
+            UrlThumbnail = urlThumbnail;
+            Content = content;
+            UpdatedAt = DateTime.UtcNow;
+        }
 
         private void ValidateStrings(string title, string slug)
         {
