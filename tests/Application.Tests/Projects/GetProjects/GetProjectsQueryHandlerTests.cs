@@ -9,7 +9,7 @@ namespace Application.Tests.Projects.GetProjects;
 public class GetProjectsQueryHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WithMultipleProjects_ReturnsPaginatedList()
+    public async Task Handle_WithMultipleProjects_ReturnsPaginatedList()
     {
         var p1 = new Project("A", "slug-a", "url1", "d1", "c1");
         var p2 = new Project("B", "slug-b", "url2", "d2", "c2");
@@ -19,7 +19,7 @@ public class GetProjectsQueryHandlerTests
         var handler = new GetProjectsQueryHandler(fakeRepo);
         var query = new GetProjectsQuery(Page: 1, PageSize: 20);
 
-        var result = await handler.HandleAsync(query, CancellationToken.None);
+        var result = await handler.Handle(query, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Items.Should().HaveCount(3);
@@ -29,13 +29,13 @@ public class GetProjectsQueryHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithNoProjects_ReturnsEmptyList()
+    public async Task Handle_WithNoProjects_ReturnsEmptyList()
     {
         var fakeRepo = new FakeProjectRepository();
         var handler = new GetProjectsQueryHandler(fakeRepo);
         var query = new GetProjectsQuery(Page: 1, PageSize: 20);
 
-        var result = await handler.HandleAsync(query, CancellationToken.None);
+        var result = await handler.Handle(query, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Items.Should().BeEmpty();

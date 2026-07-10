@@ -1,3 +1,7 @@
-namespace Application.Projects.Queries.GetProjectsBySlug;
+using Application.Abstractions.Common;
+using Application.Projects.Dtos;
+using MediatR;
 
-public sealed record GetProjectBySlugQuery(string Slug);
+namespace Application.Projects.Queries.GetProjectBySlug;
+
+public sealed record GetProjectBySlugQuery(string Slug) : IRequest<Result<ProjectDetailDto>>;

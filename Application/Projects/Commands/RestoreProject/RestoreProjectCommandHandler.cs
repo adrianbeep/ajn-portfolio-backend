@@ -1,9 +1,10 @@
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
+using MediatR;
 
 namespace Application.Projects.Commands.RestoreProject;
 
-public class RestoreProjectCommandHandler
+public class RestoreProjectCommandHandler : IRequestHandler<RestoreProjectCommand, Result>
 {
     private readonly IProjectRepository _repository;
     private readonly IUnitOfWork _uow;
@@ -16,7 +17,7 @@ public class RestoreProjectCommandHandler
         _uow = uow;
     }
 
-    public async Task<Result> HandleAsync(
+    public async Task<Result> Handle(
         RestoreProjectCommand command,
         CancellationToken ct = default)
     {

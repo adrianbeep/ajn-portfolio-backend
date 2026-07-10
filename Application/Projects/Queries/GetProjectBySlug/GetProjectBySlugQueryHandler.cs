@@ -1,10 +1,11 @@
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
 using Application.Projects.Dtos;
+using MediatR;
 
-namespace Application.Projects.Queries.GetProjectsBySlug;
+namespace Application.Projects.Queries.GetProjectBySlug;
 
-public class GetProjectBySlugQueryHandler
+public class GetProjectBySlugQueryHandler : IRequestHandler<GetProjectBySlugQuery, Result<ProjectDetailDto>>
 {
     private readonly IProjectRepository _repository;
 
@@ -13,7 +14,7 @@ public class GetProjectBySlugQueryHandler
         _repository = repository;
     }
 
-    public async Task<Result<ProjectDetailDto>> HandleAsync(
+    public async Task<Result<ProjectDetailDto>> Handle(
         GetProjectBySlugQuery query,
         CancellationToken ct = default)
     {

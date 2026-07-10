@@ -9,7 +9,7 @@ namespace Application.Tests.Authentication.Login;
 public class LoginQueryHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WithValidCredentials_ReturnsSuccessWithToken()
+    public async Task Handle_WithValidCredentials_ReturnsSuccessWithToken()
     {
         var user = new ApplicationUser { UserName = "user@example.com", Email = "user@example.com" };
         var fakeUserRepo = new FakeUserRepository();
@@ -19,7 +19,7 @@ public class LoginQueryHandlerTests
         var handler = new LoginQueryHandler(fakeUserRepo, fakeTokenGen);
         var query = new LoginQuery("user@example.com", "Password1!");
 
-        var result = await handler.HandleAsync(query);
+        var result = await handler.Handle(query);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Token.Should().Be("fake-token");
@@ -28,7 +28,7 @@ public class LoginQueryHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithInvalidCredentials_ReturnsFailure()
+    public async Task Handle_WithInvalidCredentials_ReturnsFailure()
     {
         var fakeUserRepo = new FakeUserRepository();
         fakeUserRepo.CheckPasswordReturnValue = false;
@@ -36,7 +36,7 @@ public class LoginQueryHandlerTests
         var handler = new LoginQueryHandler(fakeUserRepo, fakeTokenGen);
         var query = new LoginQuery("user@example.com", "wrong-password");
 
-        var result = await handler.HandleAsync(query);
+        var result = await handler.Handle(query);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("InvalidCredentials");

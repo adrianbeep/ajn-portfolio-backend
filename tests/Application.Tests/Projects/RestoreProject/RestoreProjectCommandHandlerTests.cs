@@ -9,7 +9,7 @@ namespace Application.Tests.Projects.RestoreProject;
 public class RestoreProjectCommandHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WhenProjectExists_CallsRestoreAndSaves()
+    public async Task Handle_WhenProjectExists_CallsRestoreAndSaves()
     {
         var existing = new Project("Title", "my-slug", "url", "desc", "content");
         existing.MarkAsDeleted();
@@ -19,7 +19,7 @@ public class RestoreProjectCommandHandlerTests
         var handler = new RestoreProjectCommandHandler(fakeRepo, fakeUow);
         var command = new RestoreProjectCommand("my-slug");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeTrue();
         fakeRepo.RestoreCallCount.Should().Be(1);
@@ -28,14 +28,14 @@ public class RestoreProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenProjectNotFound_ReturnsFailure()
+    public async Task Handle_WhenProjectNotFound_ReturnsFailure()
     {
         var fakeRepo = new FakeProjectRepository();
         var fakeUow = new FakeUnitOfWork();
         var handler = new RestoreProjectCommandHandler(fakeRepo, fakeUow);
         var command = new RestoreProjectCommand("no-existe");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("ProjectNotFound");
@@ -44,7 +44,7 @@ public class RestoreProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenRestoreFails_ReturnsFailureAndDoesNotSave()
+    public async Task Handle_WhenRestoreFails_ReturnsFailureAndDoesNotSave()
     {
         var existing = new Project("Title", "my-slug", "url", "desc", "content");
         existing.MarkAsDeleted();
@@ -55,7 +55,7 @@ public class RestoreProjectCommandHandlerTests
         var handler = new RestoreProjectCommandHandler(fakeRepo, fakeUow);
         var command = new RestoreProjectCommand("my-slug");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("RestoreFailed");

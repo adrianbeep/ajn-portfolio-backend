@@ -2,10 +2,11 @@ using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
 using Application.Projects.Dtos;
 using System.ComponentModel.DataAnnotations;
+using MediatR;
 
 namespace Application.Projects.Queries.GetProjects;
 
-public class GetProjectsQueryHandler
+public class GetProjectsQueryHandler : IRequestHandler<GetProjectsQuery, Result<ProjectListDto>>
 {
     public readonly IProjectRepository _repository;
 
@@ -14,7 +15,7 @@ public class GetProjectsQueryHandler
         _repository = repository;
     }
 
-    public async Task<Result<ProjectListDto>> HandleAsync(
+    public async Task<Result<ProjectListDto>> Handle(
         GetProjectsQuery query,
         CancellationToken ct)
     {

@@ -1,4 +1,4 @@
-using Application.Projects.Queries.GetProjectsBySlug;
+using Application.Projects.Queries.GetProjectBySlug;
 using Application.Tests.Fakes;
 using Domain.Entities;
 using FluentAssertions;
@@ -9,7 +9,7 @@ namespace Application.Tests.Projects.GetProjectBySlug;
 public class GetProjectBySlugQueryHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WhenProjectExists_ReturnsDetail()
+    public async Task Handle_WhenProjectExists_ReturnsDetail()
     {
         var existing = new Project("Title", "my-slug", "url", "desc", "content");
         var fakeRepo = new FakeProjectRepository();
@@ -17,7 +17,7 @@ public class GetProjectBySlugQueryHandlerTests
         var handler = new GetProjectBySlugQueryHandler(fakeRepo);
         var query = new GetProjectBySlugQuery("my-slug");
 
-        var result = await handler.HandleAsync(query);
+        var result = await handler.Handle(query);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Slug.Should().Be("my-slug");
@@ -26,13 +26,13 @@ public class GetProjectBySlugQueryHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenProjectNotFound_ReturnsFailure()
+    public async Task Handle_WhenProjectNotFound_ReturnsFailure()
     {
         var fakeRepo = new FakeProjectRepository();
         var handler = new GetProjectBySlugQueryHandler(fakeRepo);
         var query = new GetProjectBySlugQuery("no-existe");
 
-        var result = await handler.HandleAsync(query);
+        var result = await handler.Handle(query);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("ProjectNotFound");

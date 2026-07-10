@@ -1,10 +1,11 @@
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
 using Domain.Entities;
+using MediatR;
 
 namespace Application.Projects.Commands.CreateProject;
 
-public class CreateProjectCommandHandler
+public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand, Result<Guid>>
 {
     private readonly IProjectRepository _repository;
     private readonly IUnitOfWork _uow;
@@ -15,7 +16,7 @@ public class CreateProjectCommandHandler
         _uow = uow;
     }
 
-    public async Task<Result<Guid>> HandleAsync(
+    public async Task<Result<Guid>> Handle(
         CreateProjectCommand command, 
         CancellationToken ct = default)
     {

@@ -9,14 +9,14 @@ namespace Application.Tests.Authentication.Register;
 public class RegisterCommandHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WithValidCommand_ReturnsSuccessWithToken()
+    public async Task Handle_WithValidCommand_ReturnsSuccessWithToken()
     {
         var fakeUserRepo = new FakeUserRepository();
         var fakeTokenGen = new FakeJwtTokenGenerator();
         var handler = new RegisterCommandHandler(fakeUserRepo, fakeTokenGen);
         var command = new RegisterCommand("user@example.com", "Password1!");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Token.Should().Be("fake-token");
@@ -26,7 +26,7 @@ public class RegisterCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenEmailAlreadyExists_ReturnsFailure()
+    public async Task Handle_WhenEmailAlreadyExists_ReturnsFailure()
     {
         var fakeUserRepo = new FakeUserRepository();
         fakeUserRepo.AddShouldFail = true;
@@ -34,7 +34,7 @@ public class RegisterCommandHandlerTests
         var handler = new RegisterCommandHandler(fakeUserRepo, fakeTokenGen);
         var command = new RegisterCommand("user@example.com", "Password1!");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("EmailAlreadyExists");

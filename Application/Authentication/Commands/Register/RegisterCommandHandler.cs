@@ -3,10 +3,11 @@ using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
 using Application.Authentication.Dtos;
 using Domain.Entities;
+using MediatR;
 
 namespace Application.Authentication.Commands.Register;
 
-public class RegisterCommandHandler
+public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<AuthResponse>>
 {
     private readonly IUserRepository _repository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
@@ -19,7 +20,7 @@ public class RegisterCommandHandler
         _jwtTokenGenerator = jwtTokenGenerator;
     }
 
-    public async Task<Result<AuthResponse>> HandleAsync(
+    public async Task<Result<AuthResponse>> Handle(
         RegisterCommand command,
         CancellationToken ct = default)
     {

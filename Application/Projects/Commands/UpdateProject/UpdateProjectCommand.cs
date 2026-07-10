@@ -1,3 +1,6 @@
+using Application.Abstractions.Common;
+using MediatR;
+
 namespace Application.Projects.Commands.UpdateProject;
 
 public sealed record UpdateProjectCommand(
@@ -5,4 +8,4 @@ public sealed record UpdateProjectCommand(
     string Title,
     string Description,
     string UrlThumbnail,
-    string Content);
+    string Content) : IRequest<Result>;

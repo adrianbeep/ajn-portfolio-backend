@@ -9,7 +9,7 @@ namespace Application.Tests.Projects.CreateProject;
 public class CreateProjectCommandHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WithValidCommand_ReturnsSuccessWithNewId()
+    public async Task Handle_WithValidCommand_ReturnsSuccessWithNewId()
     {
         var fakeRepo = new FakeProjectRepository();
         var fakeUow = new FakeUnitOfWork();
@@ -17,7 +17,7 @@ public class CreateProjectCommandHandlerTests
         var command = new CreateProjectCommand(
             "Title", "my-slug", "https://img.png", "Desc", "Content");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBe(Guid.Empty);
@@ -27,7 +27,7 @@ public class CreateProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenRepoFails_ReturnsFailureAndDoesNotSave()
+    public async Task Handle_WhenRepoFails_ReturnsFailureAndDoesNotSave()
     {
         var fakeRepo = new FakeProjectRepository();
         fakeRepo.AddShouldFail = true;
@@ -36,7 +36,7 @@ public class CreateProjectCommandHandlerTests
         var command = new CreateProjectCommand(
             "Title", "my-slug", "https://img.png", "Desc", "Content");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("AddFailed");

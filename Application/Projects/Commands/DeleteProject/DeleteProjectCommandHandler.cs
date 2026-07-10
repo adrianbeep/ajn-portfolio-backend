@@ -1,9 +1,10 @@
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
+using MediatR;
 
 namespace Application.Projects.Commands.DeleteProject;
 
-public class DeleteProjectCommandHandler
+public class DeleteProjectCommandHandler : IRequestHandler<DeleteProjectCommand, Result>
 {
     private readonly IProjectRepository _repository;
     private readonly IUnitOfWork _uow;
@@ -16,7 +17,7 @@ public class DeleteProjectCommandHandler
         _uow = uow;
     }
 
-    public async Task<Result> HandleAsync(
+    public async Task<Result> Handle(
         DeleteProjectCommand command,
         CancellationToken ct = default)
     {

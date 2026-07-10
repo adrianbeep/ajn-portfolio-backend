@@ -2,10 +2,11 @@ using Application.Abstractions.Authentication;
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
 using Application.Authentication.Dtos;
+using MediatR;
 
 namespace Application.Authentication.Queries.Login;
 
-public class LoginQueryHandler
+public class LoginQueryHandler : IRequestHandler<LoginQuery, Result<AuthResponse>>
 {
     private readonly IUserRepository _repository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
@@ -18,7 +19,7 @@ public class LoginQueryHandler
         _jwtTokenGenerator = jwtTokenGenerator;
     }
 
-    public async Task<Result<AuthResponse>> HandleAsync(
+    public async Task<Result<AuthResponse>> Handle(
         LoginQuery query,
         CancellationToken ct = default)
     {

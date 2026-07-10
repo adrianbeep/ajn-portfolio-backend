@@ -9,7 +9,7 @@ namespace Application.Tests.Projects.DeleteProject;
 public class DeleteProjectCommandHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WhenProjectExists_CallsSoftDeleteAndSaves()
+    public async Task Handle_WhenProjectExists_CallsSoftDeleteAndSaves()
     {
         var existing = new Project("Title", "my-slug", "url", "desc", "content");
         var fakeRepo = new FakeProjectRepository();
@@ -18,7 +18,7 @@ public class DeleteProjectCommandHandlerTests
         var handler = new DeleteProjectCommandHandler(fakeRepo, fakeUow);
         var command = new DeleteProjectCommand("my-slug");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeTrue();
         fakeRepo.SoftDeleteCallCount.Should().Be(1);
@@ -27,14 +27,14 @@ public class DeleteProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenProjectNotFound_ReturnsFailure()
+    public async Task Handle_WhenProjectNotFound_ReturnsFailure()
     {
         var fakeRepo = new FakeProjectRepository();
         var fakeUow = new FakeUnitOfWork();
         var handler = new DeleteProjectCommandHandler(fakeRepo, fakeUow);
         var command = new DeleteProjectCommand("no-existe");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("ProjectNotFound");
@@ -43,7 +43,7 @@ public class DeleteProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenSoftDeleteFails_ReturnsFailureAndDoesNotSave()
+    public async Task Handle_WhenSoftDeleteFails_ReturnsFailureAndDoesNotSave()
     {
         var existing = new Project("Title", "my-slug", "url", "desc", "content");
         var fakeRepo = new FakeProjectRepository();
@@ -53,7 +53,7 @@ public class DeleteProjectCommandHandlerTests
         var handler = new DeleteProjectCommandHandler(fakeRepo, fakeUow);
         var command = new DeleteProjectCommand("my-slug");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("SoftDeleteFailed");

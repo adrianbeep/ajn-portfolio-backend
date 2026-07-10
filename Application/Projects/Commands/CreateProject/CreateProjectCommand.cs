@@ -1,3 +1,6 @@
+using Application.Abstractions.Common;
+using MediatR;
+
 namespace Application.Projects.Commands.CreateProject;
 
 public sealed record CreateProjectCommand(
@@ -5,4 +8,4 @@ public sealed record CreateProjectCommand(
     string Slug,
     string UrlThumbnail,
     string Description,
-    string Content);
+    string Content) : IRequest<Result<Guid>>;

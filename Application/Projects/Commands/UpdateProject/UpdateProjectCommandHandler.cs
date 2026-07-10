@@ -1,10 +1,11 @@
 using Application.Abstractions.Common;
 using Application.Abstractions.Persistence;
 using Domain.Entities;
+using MediatR;
 
 namespace Application.Projects.Commands.UpdateProject;
 
-public class UpdateProjectCommandHandler
+public class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectCommand, Result>
 {
     private readonly IProjectRepository _repository;
     private readonly IUnitOfWork _uow;
@@ -17,7 +18,7 @@ public class UpdateProjectCommandHandler
         _uow = uow;
     }
 
-    public async Task<Result> HandleAsync(
+    public async Task<Result> Handle(
         UpdateProjectCommand command,
         CancellationToken ct = default)
     {

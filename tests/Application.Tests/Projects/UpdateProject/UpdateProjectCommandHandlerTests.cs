@@ -9,7 +9,7 @@ namespace Application.Tests.Projects.UpdateProject;
 public class UpdateProjectCommandHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_WhenProjectExists_UpdatesAndSaves()
+    public async Task Handle_WhenProjectExists_UpdatesAndSaves()
     {
         var existing = new Project("Old", "my-slug", "old-url", "old-desc", "old-content");
         var fakeRepo = new FakeProjectRepository();
@@ -19,7 +19,7 @@ public class UpdateProjectCommandHandlerTests
         var command = new UpdateProjectCommand(
             "my-slug", "New Title", "New Desc", "new-url", "new-content");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeTrue();
         fakeRepo.UpdateCallCount.Should().Be(1);
@@ -31,7 +31,7 @@ public class UpdateProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenProjectNotFound_ReturnsFailure()
+    public async Task Handle_WhenProjectNotFound_ReturnsFailure()
     {
         var fakeRepo = new FakeProjectRepository();
         var fakeUow = new FakeUnitOfWork();
@@ -39,7 +39,7 @@ public class UpdateProjectCommandHandlerTests
         var command = new UpdateProjectCommand(
             "no-existe", "Title", "Desc", "url", "content");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("ProjectNotFound");
@@ -48,7 +48,7 @@ public class UpdateProjectCommandHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenUpdateFails_ReturnsFailureAndDoesNotSave()
+    public async Task Handle_WhenUpdateFails_ReturnsFailureAndDoesNotSave()
     {
         var existing = new Project("Title", "my-slug", "url", "desc", "content");
         var fakeRepo = new FakeProjectRepository();
@@ -59,7 +59,7 @@ public class UpdateProjectCommandHandlerTests
         var command = new UpdateProjectCommand(
             "my-slug", "New Title", "New Desc", "new-url", "new-content");
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.Handle(command);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Code.Should().Be("UpdateFailed");
