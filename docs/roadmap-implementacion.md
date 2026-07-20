@@ -766,11 +766,11 @@ Tantas preguntas como necesites. Cuanto más específica la pregunta, mejor la r
 - ❌ NO tocar `Domain/`, `Infrastructure/`, `Api/`.
 
 **Checkpoint:**
-- [ ] `dotnet build` verde.
-- [ ] `dotnet test` verde (todos los tests de F5 siguen pasando).
-- [ ] Todos los records de Query/Command implementan `IRequest<TResponse>`.
-- [ ] Todas las clases de Handler implementan `IRequestHandler<TRequest, TResponse>`.
-- [ ] Todos los métodos de Handler se llaman `Handle` (no `HandleAsync`).
+- [x] `dotnet build` verde.
+- [x] `dotnet test` verde (todos los tests de F5 siguen pasando).
+- [x] Todos los records de Query/Command implementan `IRequest<TResponse>`.
+- [x] Todas las clases de Handler implementan `IRequestHandler<TRequest, TResponse>`.
+- [x] Todos los métodos de Handler se llaman `Handle` (no `HandleAsync`).
 
 **Cuando te trabes, preguntame sobre:**
 - Cómo funciona exactamente `RegisterServicesFromAssembly`.
@@ -864,11 +864,11 @@ ValidationBehavior  → AuthorizationBehavior → LoggingBehavior → AuditBehav
 - ❌ NO crear validadores para los demás Commands (eso es cuando los vayas necesitando; con uno alcanza para validar la mecánica).
 
 **Checkpoint:**
-- [ ] `dotnet build` verde.
-- [ ] `dotnet test` verde (todos los tests anteriores siguen pasando + los nuevos de los 4 behaviors).
-- [ ] El orden de los behaviors es: Validation → Authorization → Logging → Audit.
-- [ ] Los Command handlers reciben `ICurrentUser` por constructor (aunque no lo usen todavía en F7).
-- [ ] El validador `CreateProjectValidator` se invoca correctamente cuando se manda `CreateProjectCommand` con datos inválidos (test pasa).
+- [x] `dotnet build` verde.
+- [x] `dotnet test` verde (todos los tests anteriores siguen pasando + los nuevos de los 4 behaviors).
+- [x] El orden de los behaviors es: Validation → Authorization → Logging → Audit.
+- [x] Los Command handlers reciben `ICurrentUser` por constructor (aunque no lo usen todavía en F7).
+- [x] El validador `CreateProjectValidator` se invoca correctamente cuando se manda `CreateProjectCommand` con datos inválidos (test pasa).
 
 **Cuando te trabes, preguntame sobre:**
 - Cómo se lee un atributo custom desde un behavior vía reflection.
@@ -958,9 +958,9 @@ ValidationBehavior  → AuthorizationBehavior → LoggingBehavior → AuditBehav
 - ❌ NO implementar los repositorios (eso es F9).
 
 **Checkpoint:**
-- [ ] `dotnet build` verde.
-- [ ] El comando de migración genera archivos en `Migrations/`.
-- [ ] `dotnet ef database update` crea el archivo SQLite y se ven las tablas con seed.
+- [x] `dotnet build` verde.
+- [x] El comando de migración genera archivos en `Migrations/`.
+- [x] `dotnet ef database update` crea el archivo SQLite y se ven las tablas con seed.
 - [ ] La tabla `AspNetRoles` contiene el rol `Admin`.
 - [ ] La tabla `projects` contiene los 2 proyectos del seed.
 - [ ] La tabla `AspNetUsers` está vacía (el primer usuario se crea en F11 vía bootstrap).
