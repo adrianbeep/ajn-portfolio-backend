@@ -11,6 +11,10 @@ namespace Application.Abstractions.Persistence
 
         Task<IReadOnlyList<Project>> GetAllNotDeletedAsync(CancellationToken ct = default);
 
+        Task<IReadOnlyList<Project>> GetPagedNotDeletedAsync(int page, int pageSize, CancellationToken ct = default);
+
+        Task<int> CountNotDeletedAsync(CancellationToken ct = default);
+
         Task<IReadOnlyList<Project>> GetAllAndDeletedAsync(CancellationToken ct = default);
 
         Task<Result> AddAsync(Project project, CancellationToken ct = default);

@@ -37,6 +37,29 @@ namespace Domain.Entities
             State = ProjectState.Active;
             CreatedAt = DateTime.UtcNow;
         }
+        
+        // Constructor para seeds/migraciones — solo Infrastructure lo usa.
+        public Project(
+            Guid id,
+            DateTime createdAt,
+            string title,
+            string slug,
+            string urlThumbnail,
+            string description,
+            string content)
+        {
+            ValidateStrings(title, slug);
+
+            Id = id;
+            CreatedAt = createdAt;
+            Title = title;
+            Slug = slug;
+            UrlThumbnail = urlThumbnail;
+            Description = description;
+            Content = content;
+
+            State = ProjectState.Active;
+        }
 
         // Métodos de comportamiento para alterar el estado de forma segura
         public void SetInactive()
