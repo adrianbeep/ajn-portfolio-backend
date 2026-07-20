@@ -40,6 +40,16 @@ public class FakeProjectRepository : IProjectRepository
     public Task<IReadOnlyList<Project>> GetAllAndDeletedAsync(CancellationToken ct = default)
         => Task.FromResult((IReadOnlyList<Project>)_projects.ToList());
 
+    public Task<IReadOnlyList<Project>> GetPagedNotDeletedAsync(int page, int pageSize, CancellationToken ct = default)
+        => Task.FromResult((IReadOnlyList<Project>)_projects
+            .Where(p => p.DeletedAt is null)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList());
+
+    public Task<int> CountNotDeletedAsync(CancellationToken ct = default)
+        => Task.FromResult(_projects.Count(p => p.DeletedAt is null));
+
     public Task<Result> AddAsync(Project project, CancellationToken ct = default)
     {
         AddCallCount++;
