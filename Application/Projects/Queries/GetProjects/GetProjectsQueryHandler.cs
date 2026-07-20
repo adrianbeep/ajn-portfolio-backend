@@ -27,13 +27,10 @@ public class GetProjectsQueryHandler : IRequestHandler<GetProjectsQuery, Result<
             _     => query.PageSize
         };
 
-        var projects = await _repository.GetAllNotDeletedAsync(ct);
-
-        var total = projects.Count();
+        var total = await _repository.CountNotDeletedAsync(ct);
+        var projects = await _repository.GetPagedNotDeletedAsync(page, pagesize, ct);
 
         var items = projects
-            .Skip((page - 1) * pagesize)
-            .Take(pagesize)
             .Select(p => new ProjectSummaryDto(
                 p.Id, p.Slug, p.Title, p.UrlThumbnail, p.Description))
             .ToList();
