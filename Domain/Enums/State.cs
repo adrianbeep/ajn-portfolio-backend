@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Domain.Enums
 {
-    public enum ProjectState
+    public enum State
     {
         Active,
         Inactive
