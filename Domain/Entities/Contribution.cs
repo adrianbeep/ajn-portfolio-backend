@@ -79,7 +79,7 @@ public class Contribution
     {
         if (DeletedAt is null) return;
         DeletedAt = null;
-        UpdatedAt = null;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void Update(
