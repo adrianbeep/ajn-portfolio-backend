@@ -1,120 +1,91 @@
 ﻿using Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Domain.Entities
+namespace Domain.Entities;
+
+public class Project
 {
-    public class Project
+    public Guid Id { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string Slug { get; private set; } = string.Empty;
+    public string UrlThumbnail { get; private set; } = string.Empty;
+    public string Description { get; private set; } = string.Empty;
+    public string Content { get; private set; } = string.Empty;
+    public State State { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+
+    // Constructor protegido para la hidratación del ORM
+    protected Project() { }
+
+    // Constructor para la creación de un nuevo proyecto
+    public Project(string title, string slug, string urlThumbnail, string description, string content)
     {
-        public Guid Id { get; private set; }
-        public string Title { get; private set; } = string.Empty;
-        public string Slug { get; private set; } = string.Empty;
-        public string UrlThumbnail { get; private set; } = string.Empty;
-        public string Description { get; private set; } = string.Empty;
-        public string Content { get; private set; } = string.Empty;
-        public ProjectState State { get; private set; }
-        public DateTime CreatedAt { get; private set; }
-        public DateTime? UpdatedAt { get; private set; }
-        public DateTime? DeletedAt { get; private set; }
+        Helpers.Helpers.ValidateTitle(title);
+        Helpers.Helpers.ValidateSlug(slug);
 
-        // Constructor protegido para la hidratación del ORM
-        protected Project() { }
+        Id = Guid.NewGuid();
+        Title = title;
+        Slug = slug;
+        UrlThumbnail = urlThumbnail;
+        Description = description;
+        Content = content;
 
-        // Constructor para la creación de un nuevo proyecto
-        public Project(string title, string slug, string urlThumbnail, string description, string content)
-        {
-            ValidateStrings(title, slug);
+        // Regla de negocio: Todo proyecto nace activo y registra su creación
+        State = State.Active;
+        CreatedAt = DateTime.UtcNow;
+    }
+    
+    // Constructor para seeds/migraciones — solo Infrastructure lo usa.
+    public Project(
+        Guid id,
+        DateTime createdAt,
+        string title,
+        string slug,
+        string urlThumbnail,
+        string description,
+        string content)
+    {
+        Helpers.Helpers.ValidateTitle(title);
+        Helpers.Helpers.ValidateSlug(slug);
 
-            Id = Guid.NewGuid();
-            Title = title;
-            Slug = slug;
-            UrlThumbnail = urlThumbnail;
-            Description = description;
-            Content = content;
+        Id = id;
+        CreatedAt = createdAt;
+        Title = title;
+        Slug = slug;
+        UrlThumbnail = urlThumbnail;
+        Description = description;
+        Content = content;
 
-            // Regla de negocio: Todo proyecto nace activo y registra su creación
-            State = ProjectState.Active;
-            CreatedAt = DateTime.UtcNow;
-        }
+        State = State.Active;
+    }
+    
+    public void MarkAsDeleted()
+    {
+        if (DeletedAt is not null) return;     // idempotente
+        DeletedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Restore()
+    {
+        if (DeletedAt is null) return;         // idempotente
+        DeletedAt = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Update(
+        string title,
+        string description,
+        string urlThumbnail,
+        string content)
+    {
+        Helpers.Helpers.ValidateTitle(title);
         
-        // Constructor para seeds/migraciones — solo Infrastructure lo usa.
-        public Project(
-            Guid id,
-            DateTime createdAt,
-            string title,
-            string slug,
-            string urlThumbnail,
-            string description,
-            string content)
-        {
-            ValidateStrings(title, slug);
-
-            Id = id;
-            CreatedAt = createdAt;
-            Title = title;
-            Slug = slug;
-            UrlThumbnail = urlThumbnail;
-            Description = description;
-            Content = content;
-
-            State = ProjectState.Active;
-        }
-
-        // Métodos de comportamiento para alterar el estado de forma segura
-        public void SetInactive()
-        {
-            if (State == ProjectState.Inactive) return;
-
-            State = ProjectState.Inactive;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        public void SetActive()
-        {
-            if (State == ProjectState.Active) return;
-
-            State = ProjectState.Active;
-            UpdatedAt = DateTime.UtcNow;
-        }
-        
-        public void MarkAsDeleted()
-        {
-            if (DeletedAt is not null) return;     // idempotente
-            DeletedAt = DateTime.UtcNow;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        public void Restore()
-        {
-            if (DeletedAt is null) return;         // idempotente
-            DeletedAt = null;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        public void Update(
-            string title,
-            string description,
-            string urlThumbnail,
-            string content)
-        {
-            if (string.IsNullOrWhiteSpace(title))
-                throw new ArgumentException("Title cannot be empty.", nameof(title));
-            
-            Title = title;
-            Description = description;
-            UrlThumbnail = urlThumbnail;
-            Content = content;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        private void ValidateStrings(string title, string slug)
-        {
-            if (string.IsNullOrWhiteSpace(title))
-                throw new ArgumentNullException("Title cannot be empty.", nameof(title));
-
-            if (string.IsNullOrWhiteSpace(slug))
-                throw new ArgumentNullException("Slug cannot be empty.", nameof(slug));
-        }
+        Title = title;
+        Description = description;
+        UrlThumbnail = urlThumbnail;
+        Content = content;
+        UpdatedAt = DateTime.UtcNow;
     }
 }
