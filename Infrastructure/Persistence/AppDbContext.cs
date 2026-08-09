@@ -11,6 +11,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Contribution> Contributions => Set<Contribution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,5 +21,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
         modelBuilder.Entity<IdentityRole<Guid>>().HasData(RoleSeed.Data);
         modelBuilder.Entity<Project>().HasData(ProjectSeed.Data);
+        modelBuilder.Entity<Contribution>().HasData(ContributionSeed.Data);
     }
 }
