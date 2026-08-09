@@ -29,7 +29,7 @@ public static class DependencyInjection
         
         //Identity (autenticacion y usuarios locales)
         //Registramos Identity y le pasamos reglas de validacion para las contraseñas
-        services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+        services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
             {
                 options.Password.RequireDigit = true;
                 options.Password.RequiredLength = 8;
@@ -41,7 +41,11 @@ public static class DependencyInjection
 
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IContributionRepository, ContributionRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+        services.Configure<BootstrapSettings>(configuration.GetSection("Bootstrap"));
 
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<IBootstrapTokenValidator, BootstrapTokenValidator>();
