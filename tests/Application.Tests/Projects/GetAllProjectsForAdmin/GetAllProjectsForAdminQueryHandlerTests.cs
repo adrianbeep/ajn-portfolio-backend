@@ -1,4 +1,3 @@
-using Application.Projects.Dtos;
 using Application.Projects.Queries.GetAllProjectsForAdmin;
 using Application.Tests.Fakes;
 using Domain.Entities;

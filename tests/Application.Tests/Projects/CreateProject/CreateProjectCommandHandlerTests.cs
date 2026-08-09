@@ -1,4 +1,3 @@
-using Application.Abstractions.Common;
 using Application.Projects.Commands.CreateProject;
 using Application.Tests.Fakes;
 using FluentAssertions;
