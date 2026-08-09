@@ -4,4 +4,5 @@ using MediatR;
 
 namespace Application.Projects.Queries.GetProjectBySlug;
 
-public sealed record GetProjectBySlugQuery(string Slug) : IRequest<Result<ProjectDetailDto>>;
+public sealed record GetProjectBySlugQuery(string Slug) 
+    : IRequest<Result<ProjectDetailDto>>;

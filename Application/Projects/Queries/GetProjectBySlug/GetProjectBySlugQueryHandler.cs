@@ -5,7 +5,8 @@ using MediatR;
 
 namespace Application.Projects.Queries.GetProjectBySlug;
 
-public class GetProjectBySlugQueryHandler : IRequestHandler<GetProjectBySlugQuery, Result<ProjectDetailDto>>
+public class GetProjectBySlugQueryHandler 
+    : IRequestHandler<GetProjectBySlugQuery, Result<ProjectDetailDto>>
 {
     private readonly IProjectRepository _repository;
 
