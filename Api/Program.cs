@@ -17,9 +17,16 @@ builder.Services.AddAuthentication("Cookies")
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddAuthorization(opts =>
+    opts.AddPolicy("AdminOnly", p => p.RequireRole("Admin")));
 
 var app = builder.Build();
+
+app.UseExceptionHandler("");
+app.UseStatusCodePages();
 
 app.UseHttpsRedirection();
 
@@ -27,5 +34,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapAuthEndpoints();
+app.MapPublicProjectEndpoints();
+app.MapPublicContributionEndpoints();
 
 app.Run();
