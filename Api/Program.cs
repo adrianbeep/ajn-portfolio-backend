@@ -36,5 +36,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapPublicProjectEndpoints();
 app.MapPublicContributionEndpoints();
+app.MapAdminProjectEndpoints();
+app.MapAdminContributionEndpoints();
 
 app.Run();
