@@ -29,6 +29,8 @@ public static class ResultExtensions
     {
         int statusCode = error.Code switch
         {
+            "Unauthorized" => StatusCodes.Status401Unauthorized,
+            "Forbidden" => StatusCodes.Status403Forbidden,
             "Auth.InvalidCredentials" => StatusCodes.Status401Unauthorized,
             "Auth.BootstrapAlreadyUsed" => StatusCodes.Status409Conflict,
             "Auth.EmailAlreadyExists" => StatusCodes.Status409Conflict,
