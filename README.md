@@ -162,10 +162,9 @@ Production (planned): PostgreSQL on Render/Turso.
 ## Known Issues
 
 1. **Integration tests**: 8/24 fail due to test harness issues with cookie propagation across HttpClient instances in NUnit
-2. **DER diagram** in `docs/diagrams/` is outdated (pre-dates Contribution entity and Identity tables)
-3. **Pipeline behavior order** differs from roadmap specification (currently Logging → Audit → Authorization → Validation vs spec's Validation → Authorization → Logging → Audit)
-4. **CurrentUser claim mapping**: reads `"sub"` claim but ASP.NET JWT remaps to `ClaimTypes.NameIdentifier` — may cause issues in audit logs
-5. **Hardcoded JWT secret** in `appsettings.Development.json` — never commit production secrets
+2. **Pipeline behavior order** differs from roadmap specification (currently Logging → Audit → Authorization → Validation vs spec's Validation → Authorization → Logging → Audit)
+3. **CurrentUser claim mapping**: reads `"sub"` claim but ASP.NET JWT remaps to `ClaimTypes.NameIdentifier` — may cause issues in audit logs
+4. **Hardcoded JWT secret** in `appsettings.Development.json` — never commit production secrets
 
 ## Roadmap
 
