@@ -31,6 +31,10 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         if (!userResult.IsSuccess)
             return Result<AuthResponse>.Failure(userResult.Error);
 
+        var roleResult = await _repository.AddToRoleAsync(user, "Admin", ct);
+        if (!roleResult.IsSuccess)
+            return Result<AuthResponse>.Failure(roleResult.Error);
+
         var token = _jwtTokenGenerator.GenerateToken(user, ct);
 
         return Result<AuthResponse>.Success(new AuthResponse(token.Token, token.ExpiresAt));

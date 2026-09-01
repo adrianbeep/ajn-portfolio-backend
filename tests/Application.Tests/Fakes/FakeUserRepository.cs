@@ -46,4 +46,9 @@ public class FakeUserRepository : IUserRepository
         CheckPasswordCallCount++;
         return Task.FromResult(CheckPasswordReturnValue);
     }
+
+    public Task<Result> AddToRoleAsync(ApplicationUser applicationUser, string role, CancellationToken ct = default)
+    {
+        return Task.FromResult(Result.Success());
+    }
 }

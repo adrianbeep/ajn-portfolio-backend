@@ -12,5 +12,7 @@ namespace Application.Abstractions.Persistence
         Task<Result> AddAsync(ApplicationUser applicationUser, string password, CancellationToken ct = default);
 
         Task<bool> CheckPasswordAsync(ApplicationUser applicationUser, string password, CancellationToken ct = default);
+
+        Task<Result> AddToRoleAsync(ApplicationUser applicationUser, string role, CancellationToken ct = default);
     }
 }

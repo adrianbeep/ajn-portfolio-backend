@@ -26,7 +26,10 @@ public class DependencyInjectionTests
             .Build();
   
         var services = new ServiceCollection();
-  
+
+        // MediatR 14.x requires ILoggerFactory
+        services.AddLogging();
+
         // Llamamos a tus dos métodos de extensión nuevos
         services.AddApplication();
         services.AddInfrastructure(configuration);
