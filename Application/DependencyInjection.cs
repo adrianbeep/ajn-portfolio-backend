@@ -16,10 +16,12 @@ public static class DependencyInjection
         
         services.AddValidatorsFromAssembly(assembly);
         
-        //El orden de registro importa, es el orden en el que se van a ejecutar de
-        //"afuera hacia adentro"
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        // MediatR ejecuta los behaviors en orden inverso al registro:
+        // el primero registrado queda MÁS CERCA del handler (más interno).
+        // Roadmap especifica: Validation → Authorization → Logging → Audit → Handler
+        // entonces Audit se registra primero (más externo) y Validation último (más interno).
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         

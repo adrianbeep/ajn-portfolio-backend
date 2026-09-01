@@ -39,7 +39,7 @@ public class LoginQueryHandlerTests
         var result = await handler.Handle(query);
 
         result.IsSuccess.Should().BeFalse();
-        result.Error.Code.Should().Be("InvalidCredentials");
+        result.Error.Code.Should().Be("Auth.InvalidCredentials");
         fakeTokenGen.GenerateTokenCallCount.Should().Be(0);
     }
 }
