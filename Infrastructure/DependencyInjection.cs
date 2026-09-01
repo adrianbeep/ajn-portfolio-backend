@@ -17,9 +17,10 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         //Base de datos
-        //Leemos la connection string desde el appsettings.json. Si no esta tira error
-        //para evitar que falle silenciosamente    
+        //Leemos la connection string desde el appsettings.json o entorno de testing.
+        //Si no esta tira error para evitar que falle silenciosamente
         var connectionString = configuration.GetConnectionString("DefaultConnection")
+                               ?? Environment.GetEnvironmentVariable("TESTING_CONNECTION_STRING")
                                ?? throw new InvalidOperationException(
                                    "No se encontro la connection string 'DefaultConnection'");
         
