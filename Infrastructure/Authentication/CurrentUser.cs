@@ -1,5 +1,6 @@
 using Application.Abstractions.Common;
 using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 
 namespace Infrastructure.Authentication;
 
@@ -16,7 +17,9 @@ public class CurrentUser : ICurrentUser
     {
         get
         {
-            var raw = _accessor.HttpContext?.User?.FindFirst("sub")?.Value;
+            // JwtBearer middleware maps "sub" to ClaimTypes.NameIdentifier by default
+            var raw = _accessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                      ?? _accessor.HttpContext?.User?.FindFirst("sub")?.Value;
             return Guid.TryParse(raw, out var id) ? id : null;
         }
     }

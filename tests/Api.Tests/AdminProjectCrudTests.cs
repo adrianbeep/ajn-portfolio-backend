@@ -18,6 +18,7 @@ public class AdminProjectCrudTests
     {
         _factory = new ApiWebApplicationFactory();
         _client = _factory.CreateClient();
+        _authToken = null;
     }
 
     [TearDown]
@@ -44,19 +45,74 @@ public class AdminProjectCrudTests
                 _authToken = tokenProp.GetString() ?? "";
             }
         }
+    }
 
-        // Set token as cookie so JWT middleware can read it
+    private async Task<HttpResponseMessage> AdminPostAsync(string path, object body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, path);
+        request.Content = JsonContent.Create(body);
         if (!string.IsNullOrEmpty(_authToken))
-        {
-            _client.DefaultRequestHeaders.Add("Cookie", $"auth_token={_authToken}");
-        }
+            request.Headers.Add("Cookie", $"auth_token={_authToken}");
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> AdminDeleteAsync(string path)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, path);
+        if (!string.IsNullOrEmpty(_authToken))
+            request.Headers.Add("Cookie", $"auth_token={_authToken}");
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> AdminPostAsync(string path)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, path);
+        if (!string.IsNullOrEmpty(_authToken))
+            request.Headers.Add("Cookie", $"auth_token={_authToken}");
+        return await _client.SendAsync(request);
     }
 
     [Test]
     public async Task CreateProject_WithoutAuth_Returns401()
     {
-        var response = await _client.PostAsJsonAsync("/admin/projects", new { Title = "Test", Slug = "test", Description = "Desc", UrlThumbnail = "https://img.com/1.jpg", Content = "Content" });
+        var response = await AdminPostAsync("/admin/projects", new { Title = "Test", Slug = "test", Description = "Desc", UrlThumbnail = "https://img.com/1.jpg", Content = "Content" });
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task Register_Login_CreateProject_Sequence()
+    {
+        // Step 1: Register
+        var email = $"seq{Guid.NewGuid()}@test.com";
+        using var regRequest = new HttpRequestMessage(HttpMethod.Post, "/admin/auth/register");
+        regRequest.Content = JsonContent.Create(new { Email = email, Password = "Password123!" });
+        regRequest.Headers.Add("X-Bootstrap-Token", "bootstrap-token-123");
+        var regResponse = await _client.SendAsync(regRequest);
+        regResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Step 2: Login to get fresh token
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/admin/auth/login");
+        loginRequest.Content = JsonContent.Create(new { Email = email, Password = "Password123!" });
+        var loginResponse = await _client.SendAsync(loginRequest);
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var loginJson = await loginResponse.Content.ReadFromJsonAsync<AuthResponse>();
+        var token = loginJson!.Token;
+
+        // Step 3: Create project with token in Authorization header
+        var slug = $"seq-{Guid.NewGuid():N}";
+        using var createRequest = new HttpRequestMessage(HttpMethod.Post, "/admin/projects");
+        createRequest.Content = JsonContent.Create(new {
+            Title = "Seq Project",
+            Slug = slug,
+            Description = "Desc",
+            UrlThumbnail = "https://img.com/1.jpg",
+            Content = "Content"
+        });
+        createRequest.Headers.Add("Authorization", $"Bearer {token}");
+
+        var createResponse = await _client.SendAsync(createRequest);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Test]
@@ -64,7 +120,7 @@ public class AdminProjectCrudTests
     {
         await RegisterAndGetToken();
         var slug = $"test-project-{Guid.NewGuid():N}";
-        var response = await _client.PostAsJsonAsync("/admin/projects", new {
+        var response = await AdminPostAsync("/admin/projects", new {
             Title = "Test Project",
             Slug = slug,
             Description = "A test project",
@@ -78,7 +134,7 @@ public class AdminProjectCrudTests
     public async Task CreateProject_WithEmptyTitle_Returns400()
     {
         await RegisterAndGetToken();
-        var response = await _client.PostAsJsonAsync("/admin/projects", new {
+        var response = await AdminPostAsync("/admin/projects", new {
             Title = "",
             Slug = "testslug",
             Description = "Desc",
@@ -92,7 +148,7 @@ public class AdminProjectCrudTests
     public async Task CreateProject_WithInvalidSlug_Returns400()
     {
         await RegisterAndGetToken();
-        var response = await _client.PostAsJsonAsync("/admin/projects", new {
+        var response = await AdminPostAsync("/admin/projects", new {
             Title = "Test",
             Slug = "Invalid SLUG!",
             Description = "Desc",
@@ -105,7 +161,7 @@ public class AdminProjectCrudTests
     [Test]
     public async Task DeleteProject_WithoutAuth_Returns401()
     {
-        var response = await _client.DeleteAsync("/admin/projects/some-slug");
+        var response = await AdminDeleteAsync("/admin/projects/some-slug");
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -113,7 +169,7 @@ public class AdminProjectCrudTests
     public async Task DeleteProject_Inexistent_Returns404()
     {
         await RegisterAndGetToken();
-        var response = await _client.DeleteAsync("/admin/projects/this-does-not-exist");
+        var response = await AdminDeleteAsync("/admin/projects/this-does-not-exist");
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -122,7 +178,7 @@ public class AdminProjectCrudTests
     {
         await RegisterAndGetToken();
         var slug = $"delete-test-{Guid.NewGuid():N}";
-        await _client.PostAsJsonAsync("/admin/projects", new {
+        await AdminPostAsync("/admin/projects", new {
             Title = "To Delete",
             Slug = slug,
             Description = "Desc",
@@ -130,14 +186,14 @@ public class AdminProjectCrudTests
             Content = "Content"
         });
 
-        var response = await _client.DeleteAsync($"/admin/projects/{slug}");
+        var response = await AdminDeleteAsync($"/admin/projects/{slug}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Test]
     public async Task RestoreProject_WithoutAuth_Returns401()
     {
-        var response = await _client.PostAsync("/admin/projects/some-slug/restore", null);
+        var response = await AdminPostAsync("/admin/projects/some-slug/restore");
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

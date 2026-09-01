@@ -18,6 +18,7 @@ public class AdminContributionCrudTests
     {
         _factory = new ApiWebApplicationFactory();
         _client = _factory.CreateClient();
+        _authToken = null;
     }
 
     [TearDown]
@@ -30,16 +31,12 @@ public class AdminContributionCrudTests
     private async Task RegisterAndGetToken()
     {
         var email = $"contribtest{Guid.NewGuid()}@test.com";
-        var response = await _client.PostAsJsonAsync("/admin/auth/register", new { Email = email, Password = "Password123!" });
-        if (response.Headers.TryGetValues("Set-Cookie", out var setCookieValues))
-        {
-            var cookie = setCookieValues.FirstOrDefault(c => c.StartsWith("auth_token="));
-            if (cookie != null)
-            {
-                _authToken = cookie.Substring("auth_token=".Length).Split(';').First();
-            }
-        }
-        if (string.IsNullOrEmpty(_authToken))
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/admin/auth/register");
+        request.Content = JsonContent.Create(new { Email = email, Password = "Password123!" });
+        request.Headers.Add("X-Bootstrap-Token", "bootstrap-token-123");
+
+        var response = await _client.SendAsync(request);
+        if (response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (content != null)
@@ -47,16 +44,29 @@ public class AdminContributionCrudTests
                 _authToken = content.Token;
             }
         }
+    }
+
+    private async Task<HttpResponseMessage> AdminPostAsync(string path, object body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, path);
+        request.Content = JsonContent.Create(body);
         if (!string.IsNullOrEmpty(_authToken))
-        {
-            _client.DefaultRequestHeaders.Add("Cookie", $"auth_token={_authToken}");
-        }
+            request.Headers.Add("Cookie", $"auth_token={_authToken}");
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> AdminDeleteAsync(string path)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, path);
+        if (!string.IsNullOrEmpty(_authToken))
+            request.Headers.Add("Cookie", $"auth_token={_authToken}");
+        return await _client.SendAsync(request);
     }
 
     [Test]
     public async Task CreateContribution_WithoutAuth_Returns401()
     {
-        var response = await _client.PostAsJsonAsync("/admin/contributions", new { Title = "Test", Slug = "test", Description = "Desc", UrlThumbnail = "https://img.com/1.jpg", UrlPrContribution = "https://github.com/pr/1", Content = "Content" });
+        var response = await AdminPostAsync("/admin/contributions", new { Title = "Test", Slug = "test", Description = "Desc", UrlThumbnail = "https://img.com/1.jpg", UrlPrContribution = "https://github.com/pr/1", Content = "Content" });
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -65,13 +75,13 @@ public class AdminContributionCrudTests
     {
         await RegisterAndGetToken();
         var slug = $"test-contrib-{Guid.NewGuid():N}";
-        var response = await _client.PostAsJsonAsync("/admin/contributions", new { 
-            Title = "Test Contribution", 
-            Slug = slug, 
-            Description = "A test contribution", 
+        var response = await AdminPostAsync("/admin/contributions", new {
+            Title = "Test Contribution",
+            Slug = slug,
+            Description = "A test contribution",
             UrlThumbnail = "https://img.com/test.jpg",
             UrlPrContribution = "https://github.com/test/pr/1",
-            Content = "# Test Content" 
+            Content = "# Test Content"
         });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -79,7 +89,7 @@ public class AdminContributionCrudTests
     [Test]
     public async Task DeleteContribution_WithoutAuth_Returns401()
     {
-        var response = await _client.DeleteAsync("/admin/contributions/some-slug");
+        var response = await AdminDeleteAsync("/admin/contributions/some-slug");
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

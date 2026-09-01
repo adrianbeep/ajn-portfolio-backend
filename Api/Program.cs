@@ -34,7 +34,11 @@ builder.Services.AddAuthentication(JwtScheme)
         {
             OnMessageReceived = context =>
             {
-                context.Token = context.Request.Cookies[CookieHelpers.AuthCookieName];
+                // Read from cookie (production) if Authorization header is not present (tests)
+                if (string.IsNullOrEmpty(context.Token))
+                {
+                    context.Token = context.Request.Cookies[CookieHelpers.AuthCookieName];
+                }
                 return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
