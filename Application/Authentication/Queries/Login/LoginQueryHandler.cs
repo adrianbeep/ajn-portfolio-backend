@@ -28,14 +28,14 @@ public class LoginQueryHandler : IRequestHandler<LoginQuery, Result<AuthResponse
         if (user is null)
             return Result<AuthResponse>.Failure(
                 new Error(
-                    "InvalidCredentials", "Invalid email or password"));
+                    "Auth.InvalidCredentials", "Invalid email or password"));
 
         bool pass = await _repository.CheckPasswordAsync(user, query.Password, ct);
-        
+
         if (!pass)
             return Result<AuthResponse>.Failure(
                 new Error(
-                    "InvalidCredentials", "Invalid email or password"));
+                    "Auth.InvalidCredentials", "Invalid email or password"));
 
         var token = _jwtTokenGenerator.GenerateToken(user, ct);
 
