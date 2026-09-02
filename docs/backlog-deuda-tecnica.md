@@ -260,6 +260,106 @@
 
 ---
 
+## [TD-009] No hay CI/CD (GitHub Actions)
+
+**Tipo**: testing
+**Prioridad**: high
+**Estado**: acknowledged
+**Fecha de registro**: 2026-09-02
+
+**Impacto**: No hay ningún workflow en `.github/workflows/`. Cada push directo a `main` entra sin que nadie valide nada en la nube. Los tests solo corren localmente cuando alguien los ejecuta a mano. No hay deploy automático a Render.
+
+**Costo de no resolver**:
+- Push con tests rotos pasa desapercibido (ya pasó: commit `0887cdb` eliminó 9 tests rotos sin que nada lo detectara antes)
+- No hay forma de bloquear merges con tests fallando
+- Deploy a producción requiere pasos manuales propensos a error
+
+**Plan de resolución**:
+1. Crear `.github/workflows/ci.yml` que:
+   - Levanta runner Ubuntu
+   - Instala .NET 10 SDK
+   - Corre `dotnet restore && dotnet build && dotnet test`
+2. Activar branch protection en `main` (Settings → Branches → Require status checks)
+3. (Opcional) Segundo workflow `cd.yml` que deploya a Render cuando CI pasa y hay push a `main`
+4. (Opcional) Adoptar flujo de branches feature/* + PRs para no pushear directo a main
+
+**Estimación**: ~2 horas (solo CI), +1h con CD a Render
+
+---
+
+## [TD-010] Logout no invalida el JWT (sigue válido hasta expirar)
+
+**Tipo**: security
+**Prioridad**: medium
+**Estado**: acknowledged
+**Fecha de registro**: 2026-09-02
+
+**Impacto**: `POST /admin/auth/logout` solo borra la cookie `auth_token`. El JWT sigue siendo válido hasta su `ExpirationMinutes` (10h por default). Si alguien capturó el token antes del logout, puede seguir usándolo.
+
+**Costo de no resolver**:
+- Logout no es realmente "salir" — el token sigue activo
+- Si se roba una cookie (XSS, etc.), el atacante tiene 10h de acceso incluso después del logout
+- Falso sentido de seguridad para el admin
+
+**Plan de resolución** (cuando se justifique):
+- Opción A (simple): mantener una blacklist en memoria de `jti` revocados hasta su expiración
+- Opción B (correcta): guardar `jti` en DB al emitir, marcar como revoked al logout
+- Opción C (overkill para single-owner): refresh tokens + access tokens cortos
+
+Para un single-owner con HTTPS + cookie httpOnly + SameSite=Strict, probablemente el riesgo sea aceptable.
+
+**Estimación**: ~3 horas (Opción A), ~6 horas (Opción B)
+
+---
+
+## [TD-011] Swagger/OpenAPI UI no está expuesto
+
+**Tipo**: maintainability
+**Prioridad**: low
+**Estado**: acknowledged
+**Fecha de registro**: 2026-09-02
+
+**Impacto**: `AddEndpointsApiExplorer()` está registrado pero no hay `Swashbuckle.AspNetCore` instalado ni UI de Swagger expuesta. El archivo `Api/Api.http` cubre testing manual pero no hay docs interactivas.
+
+**Costo de no resolver**:
+- Frontend devs tienen que leer el README o el código para conocer los endpoints
+- No hay forma fácil de probar la API desde el navegador sin escribir requests a mano
+- La spec OpenAPI no se genera automáticamente
+
+**Plan de resolución**:
+1. `dotnet add package Swashbuckle.AspNetCore` en `Api/`
+2. Agregar `app.UseSwagger()` y `app.UseSwaggerUI()` en `Program.cs`
+3. Proteger `/swagger` con la misma auth de admin (solo accesible logueado)
+4. Documentar cada endpoint con summaries de Minimal API (`WithSummary`, `WithDescription`)
+
+**Estimación**: ~1 hora
+
+---
+
+## [TD-012] No hay dump schema de EF contra PostgreSQL para validar
+
+**Tipo**: testing
+**Prioridad**: low
+**Estado**: acknowledged
+**Fecha de registro**: 2026-09-02
+
+**Impacto**: D6 dice "PostgreSQL en producción" pero el proyecto solo se probó contra SQLite. No hay tests E2E ni migraciones generadas contra Postgres. Si Postgres tiene features incompatibles (tipos, constraints, collations), nos enteramos en deploy.
+
+**Costo de no resolver**:
+- Deploy a Render con Postgres podría fallar por incompatibilidad de schema
+- Queries que funcionan en SQLite podrían ser lentas o incorrectas en Postgres
+- Índices únicos, FKs y tipos `TEXT` vs `VARCHAR` se comportan distinto
+
+**Plan de resolución** (cuando haya presupuesto de Postgres para tests):
+1. Levantar Postgres en CI con `services:` de GitHub Actions
+2. Apuntar `ConnectionStrings__DefaultConnection` al Postgres del CI
+3. Correr `dotnet ef migrations script` y comparar contra `EnsureCreated`
+4. (Opcional) Tests E2E reales contra Postgres
+
+**Estimación**: ~4 horas
+
+---
+
 ## Resumen del Backlog
 
 | ID | Tipo | Prioridad | Estado | Estimación |
@@ -272,20 +372,24 @@
 | TD-006 | maintainability | medium | acknowledged | 2 horas |
 | TD-007 | maintainability | medium | acknowledged | 1 hora |
 | TD-008 | maintainability | low | acknowledged | 3 horas |
+| TD-009 | testing | high | acknowledged | 2-3 horas |
+| TD-010 | security | medium | acknowledged | 3-6 horas |
+| TD-011 | maintainability | low | acknowledged | 1 hora |
+| TD-012 | testing | low | acknowledged | 4 horas |
 
-**Total estimado**: ~3.5 días de trabajo
+**Total estimado**: ~5-7 días de trabajo
 
 ### Prioridad de resolución sugerida
 
 ```
 Alta (primero):
-  TD-002 → TD-001 → TD-003
+  TD-002 → TD-009 → TD-001 → TD-003
 
 Media (cuando haya tiempo):
-  TD-004 → TD-006 → TD-007
+  TD-004 → TD-006 → TD-007 → TD-010
 
 Baja (cuando el proyecto crezca):
-  TD-005 → TD-008
+  TD-005 → TD-008 → TD-011 → TD-012
 ```
 
 ---
@@ -299,5 +403,5 @@ Baja (cuando el proyecto crezca):
 
 ---
 
-*Última actualización: 2026-06-21*
+*Última actualización: 2026-09-02*
 *Responsable: Usuario (owner del proyecto)*
