@@ -19,3 +19,7 @@ Desktop.ini
 *.db
 *.db-shm
 *.db-wal
+
+## Test logs
+tests/log.txt
+tests/**/*.log

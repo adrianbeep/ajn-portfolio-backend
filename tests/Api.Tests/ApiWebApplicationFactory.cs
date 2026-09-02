@@ -13,14 +13,10 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>, IAsyncDi
 
     public ApiWebApplicationFactory()
     {
-        // Set environment variables BEFORE the factory's config is built.
-        // CreateSlimBuilder reads them at startup (before ConfigureWebHost).
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $"DataSource={_dbPath}");
-        Environment.SetEnvironmentVariable("Jwt__Secret", "super-secret-key-that-is-at-least-32-characters-long-for-hmacsha256!");
-        Environment.SetEnvironmentVariable("Jwt__Issuer", "TestIssuer");
-        Environment.SetEnvironmentVariable("Jwt__Audience", "TestAudience");
-        Environment.SetEnvironmentVariable("Bootstrap__Token", "bootstrap-token-123");
-        Environment.SetEnvironmentVariable("Cors__AllowedOrigins", "http://localhost:3000");
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
+        Environment.SetEnvironmentVariable("TESTING_CONNECTION_STRING", $"DataSource={_dbPath}");
+        Environment.SetEnvironmentVariable("ASPNETCORE_BOOTSTRAP__TOKEN", "bootstrap-token-123");
+        Environment.SetEnvironmentVariable("ASPNETCORE_CORS__ALLOWEDORIGINS", "http://localhost:3000");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -29,15 +25,12 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>, IAsyncDi
 
         builder.ConfigureServices(services =>
         {
-            // Remove existing DbContext
             var descriptor = services.SingleOrDefault(s => s.ServiceType == typeof(DbContextOptions<AppDbContext>));
             if (descriptor != null) services.Remove(descriptor);
 
-            // Add test DbContext with in-memory database
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite($"DataSource={_dbPath}"));
 
-            // Build and ensure DB is created with proper schema
             var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

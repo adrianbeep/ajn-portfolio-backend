@@ -12,12 +12,10 @@ public static class CookieHelpers
         {
             HttpOnly = true,
             SameSite = SameSiteMode.Strict,
-
             Secure = context.Request.IsHttps,
-
             Expires = expiresAt
         };
-        
+
         context.Response.Cookies.Append(AuthCookieName, token, options);
     }
 
