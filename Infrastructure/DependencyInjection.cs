@@ -16,14 +16,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        //Base de datos
-        //Leemos la connection string desde el appsettings.json o entorno de testing.
-        //Si no esta tira error para evitar que falle silenciosamente
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-                               ?? Environment.GetEnvironmentVariable("TESTING_CONNECTION_STRING")
-                               ?? throw new InvalidOperationException(
-                                   "No se encontro la connection string 'DefaultConnection'");
-        
+// Base de datos.
+        // El path se resuelve de forma estable (anchored al repo + overrides via env var)
+        // para que el runtime y `dotnet ef` apunten al MISMO archivo sin depender del cwd.
+        // Ver Infrastructure/Persistence/DatabasePath.cs para el rationale.
+        var connectionString = DatabaseConnection.Resolve();
         //Registramos el contexto de Entity Framework. Por defecto, AppDbContext lo registra como scoped
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlite(connectionString));
