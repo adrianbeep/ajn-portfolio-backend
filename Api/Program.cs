@@ -15,7 +15,17 @@ var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
 
 const string JwtScheme = "Bearer";
 
-builder.Services.AddAuthentication(JwtScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        // Force every default to the JWT scheme. AddIdentity runs before us and
+        // configures the cookie scheme as the challenge/forbid scheme, which is
+        // why RequireAuthorization failures were redirecting to /Account/Login
+        // even though the JWT itself validated OK.
+        options.DefaultScheme = JwtScheme;
+        options.DefaultAuthenticateScheme = JwtScheme;
+        options.DefaultChallengeScheme = JwtScheme;
+        options.DefaultForbidScheme = JwtScheme;
+    })
     .AddJwtBearer(JwtScheme, options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -28,6 +38,11 @@ builder.Services.AddAuthentication(JwtScheme)
             ValidAudience = jwtSettings.Audience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
+            // RoleClaimType and NameClaimType intentionally left at their defaults
+            // (ClaimTypes.Role and ClaimTypes.Name) because JwtSecurityTokenHandler
+            // maps the "role" and "sub" JWT claims to those standard ClaimTypes when
+            // DefaultMapInboundClaims is true. Overriding these to "role"/"sub"
+            // would make RequireRole look under a type the mapper already rewrote.
         };
 
         options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
@@ -43,6 +58,15 @@ builder.Services.AddAuthentication(JwtScheme)
             },
             OnAuthenticationFailed = context =>
             {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                // Belt-and-suspenders: even though JwtBearer never redirects by
+                // default, force a clean 401 (no Location header, no ProblemDetails)
+                // so a frontend probe can never bounce to /Account/Login again.
+                context.HandleResponse();
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return Task.CompletedTask;
             }
