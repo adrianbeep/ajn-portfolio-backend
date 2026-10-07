@@ -4,6 +4,7 @@ using Application.Contributions.Commands.RestoreContribution;
 using Application.Contributions.Commands.UpdateContribution;
 using Application.Contributions.Dtos;
 using Application.Contributions.Queries.GetAllContributionsForAdmin;
+using Application.Contributions.Queries.GetContributionBySlug;
 using Api.Common;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -24,6 +25,15 @@ public static class AdminContributionEndpoints
         group.MapGet("/", async (ISender sender) =>
         {
             var query = new GetAllContributionsForAdminQuery();
+            var result = await sender.Send(query);
+            return result.ToHttpResult();
+        });
+
+        group.MapGet("/{slug}", async (
+            [FromRoute] string slug,
+            ISender sender) =>
+        {
+            var query = new GetContributionBySlugQuery(slug);
             var result = await sender.Send(query);
             return result.ToHttpResult();
         });

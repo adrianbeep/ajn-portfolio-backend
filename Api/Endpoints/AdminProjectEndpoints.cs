@@ -4,6 +4,7 @@ using Application.Projects.Commands.RestoreProject;
 using Application.Projects.Commands.UpdateProject;
 using Application.Projects.Dtos;
 using Application.Projects.Queries.GetAllProjectsForAdmin;
+using Application.Projects.Queries.GetProjectBySlug;
 using Api.Common;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -24,6 +25,15 @@ public static class AdminProjectEndpoints
         group.MapGet("/", async (ISender sender) =>
         {
             var query = new GetAllProjectsForAdminQuery();
+            var result = await sender.Send(query);
+            return result.ToHttpResult();
+        });
+
+        group.MapGet("/{slug}", async (
+            [FromRoute] string slug,
+            ISender sender) =>
+        {
+            var query = new GetProjectBySlugQuery(slug);
             var result = await sender.Send(query);
             return result.ToHttpResult();
         });
