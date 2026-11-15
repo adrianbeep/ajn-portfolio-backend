@@ -24,7 +24,9 @@ services:
       - key: ASPNETCORE_URLS
         value: http://+:8080
       # La base vive en el disco persistente, no en el sistema de archivos efimero.
-      - key: ConnectionStrings__DefaultConnection
+      # PORTFOLIO_DB_PATH es obligatoria en el contenedor: sin el .slnx del repo
+      # la resolucion automatica de la base no puede anclar la ruta.
+      - key: PORTFOLIO_DB_PATH
         value: Data Source=/data/portfolio.db
       # Aplica las migraciones de EF Core al arrancar (contenedor limpio).
       - key: Database__AutoMigrate

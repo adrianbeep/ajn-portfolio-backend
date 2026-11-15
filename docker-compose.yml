@@ -15,7 +15,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__DefaultConnection: "Data Source=/data/portfolio.db"
+      # La imagen no trae el .slnx, asi que la base hay que apuntarla a mano.
+      PORTFOLIO_DB_PATH: "Data Source=/data/portfolio.db"
       Database__AutoMigrate: "true"
       # LOCAL ONLY: sobreescribir con JWT_SECRET=<secreto real>
       Jwt__Secret: "${JWT_SECRET:-local-dev-secret-at-least-32-characters-long}"

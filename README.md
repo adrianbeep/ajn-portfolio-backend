@@ -28,7 +28,7 @@ Copy `.env.example` to `.env` (or set these directly in your shell):
 
 ```bash
 # .env
-ConnectionStrings__DefaultConnection=DataSource=portfolio.db
+PORTFOLIO_DB_PATH=Data Source=Infrastructure/portfolio-dev.db
 Jwt__Secret=your-secret-key-at-least-32-chars
 Jwt__Issuer=AJNPortfolio
 Jwt__Audience=AJNPortfolioAdmin
@@ -101,7 +101,7 @@ docker run -d --name ajn-portfolio-backend \
 
 | Variable | Obligatoria | Descripción |
 |----------|:-----------:|-------------|
-| `ConnectionStrings__DefaultConnection` | Sí | Ruta del archivo SQLite (`Data Source=/data/portfolio.db`) |
+| `PORTFOLIO_DB_PATH` | Sí (en Docker) | Connection string SQLite de la base (`Data Source=/data/portfolio.db`). En local es opcional: la ruta se ancla sola al repo |
 | `Jwt__Secret` | Sí | Clave de firma del JWT (mínimo 32 caracteres) |
 | `Jwt__Issuer` | Sí | Claim `iss` del JWT |
 | `Jwt__Audience` | Sí | Claim `aud` del JWT |
@@ -236,7 +236,7 @@ The JWT contains: `sub` (user ID), `email`, `role` (Admin), `jti` (unique token 
 
 ## Database
 
-SQLite during development. The connection string is read from `appsettings.Development.json` or the `ConnectionStrings__DefaultConnection` environment variable.
+SQLite during development. The path is anchored to the repository root (`Infrastructure/portfolio-dev.db`) so the runtime and `dotnet ef` always hit the same file, regardless of the working directory. Override it with the `PORTFOLIO_DB_PATH` environment variable, which takes a full SQLite connection string.
 
 Production (planned): PostgreSQL on Render/Turso.
 

@@ -47,11 +47,18 @@ RUN chmod +x /app/docker-entrypoint.sh \
 EXPOSE 8080
 
 # Valores por defecto sobrescribibles en tiempo de ejecucion.
+#
+# PORTFOLIO_DB_PATH es obligatoria en la imagen: la resolucion por defecto de
+# la base (Infrastructure/Persistence/DatabasePath.cs) busca el archivo
+# 'ajn-portfolio-backend.slnx' subiendo desde el directorio de la app para
+# anclar la ruta al repo. En la imagen publishada no hay .slnx, asi que sin
+# esta variable el proceso muere al arrancar. Acepta una connection string
+# SQLite completa.
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_RUNNING_IN_CONTAINER=true \
     Database__AutoMigrate=true \
-    ConnectionStrings__DefaultConnection="Data Source=/data/portfolio.db"
+    PORTFOLIO_DB_PATH="Data Source=/data/portfolio.db"
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8080/health || exit 1
