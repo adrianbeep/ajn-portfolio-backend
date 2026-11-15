@@ -50,6 +50,22 @@ jobs:
           path: TestResults/
           if-no-files-found: ignore
 
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Shellcheck de los scripts del contenedor
+        run: shellcheck docker-entrypoint.sh
+
   docker:
     name: Imagen Docker y smoke test
     needs: build-test
