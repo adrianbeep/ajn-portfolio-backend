@@ -1,0 +1,8 @@
+# Los scripts de shell se ejecutan dentro del contenedor (Debian), asi que
+# necesitan finales de linea LF en cualquier plataforma donde se clone el repo.
+*.sh text eol=lf
+
+# Los workflows y los archivos de Docker se generan en Linux.
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
