@@ -2,6 +2,8 @@ using System.Text;
 using Api.Common;
 using Api.Endpoints;
 using Infrastructure.Authentication;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -103,6 +105,19 @@ builder.Services.AddAuthorization(opts =>
 
 var app = builder.Build();
 
+//Migracion automatica de la base de datos.
+//Se activa con Database:AutoMigrate (por defecto false para no cambiar el comportamiento local).
+//Es lo que permite que un contenedor arrancque con una base SQLite vacia y quede usable.
+if (app.Configuration.GetValue<bool>("Database:AutoMigrate"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    app.Logger.LogInformation("Aplicando migraciones de base de datos...");
+    await db.Database.MigrateAsync();
+    app.Logger.LogInformation("Migraciones de base de datos aplicadas correctamente.");
+}
+
 app.UseExceptionHandler("");
 app.UseStatusCodePages();
 
@@ -118,5 +133,31 @@ app.MapPublicProjectEndpoints();
 app.MapPublicContributionEndpoints();
 app.MapAdminProjectEndpoints();
 app.MapAdminContributionEndpoints();
+
+//Health check anonimo: lo usan el HEALTHCHECK del contenedor y el smoke test de CI.
+//Devuelve 200 si la base de datos responde y 503 si no.
+app.MapGet("/health", async (AppDbContext db, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync(cancellationToken);
+
+        return canConnect
+            ? Results.Ok(new { status = "healthy", database = "connected" })
+            : Results.Json(
+                new { status = "unhealthy", database = "unreachable" },
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Fallo en el health check: no se pudo conectar con la base de datos");
+
+        return Results.Json(
+            new { status = "unhealthy", database = "unreachable" },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+.WithTags("Health")
+.WithName("Health");
 
 app.Run();
