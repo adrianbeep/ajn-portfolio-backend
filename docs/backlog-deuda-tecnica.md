@@ -264,8 +264,9 @@
 
 **Tipo**: testing
 **Prioridad**: high
-**Estado**: acknowledged
+**Estado**: resolved
 **Fecha de registro**: 2026-09-02
+**Fecha de resolución**: 2026-11-15
 
 **Impacto**: No hay ningún workflow en `.github/workflows/`. Cada push directo a `main` entra sin que nadie valide nada en la nube. Los tests solo corren localmente cuando alguien los ejecuta a mano. No hay deploy automático a Render.
 
@@ -284,6 +285,20 @@
 4. (Opcional) Adoptar flujo de branches feature/* + PRs para no pushear directo a main
 
 **Estimación**: ~2 horas (solo CI), +1h con CD a Render
+
+**Resolución**: Se creó la cadena completa de CI/CD sobre GitHub Actions:
+
+| Archivo | Qué aporta |
+|---------|-----------|
+| `.github/workflows/ci.yml` | Build + 121 tests en cada PR y push a `main`, build de la imagen y smoke test del contenedor |
+| `.github/workflows/cd.yml` | Publica la imagen en GHCR y dispara el deploy hook de Render (opcional) |
+| `Dockerfile` | Imagen multi-stage (.NET 10 SDK → ASP.NET 10) con healthcheck y entrada por `docker-entrypoint.sh` |
+| `docker-entrypoint.sh` | Prepara `/data` y baja privilegios del usuario `root` al usuario `app` |
+| `docker-compose.yml` | Servicio local con volumen `api-data` y healthcheck |
+| `.dockerignore` | La imagen no lleva tests, docs, bases locales ni historial de Git |
+| `render.yaml` | Blueprint de Render con disco persistente de 1 GB en `/data` |
+
+Además, la API recibió el endpoint `GET /health` (usado por el `HEALTHCHECK` del contenedor y por el smoke test de CI) y la auto-migración de EF Core controlled por `Database:AutoMigrate` (`Api/Program.cs` + `Api/appsettings.json`), que es lo que permite que un contenedor arranque con la base ya creada.
 
 ---
 
@@ -372,7 +387,7 @@ Para un single-owner con HTTPS + cookie httpOnly + SameSite=Strict, probablement
 | TD-006 | maintainability | medium | acknowledged | 2 horas |
 | TD-007 | maintainability | medium | acknowledged | 1 hora |
 | TD-008 | maintainability | low | acknowledged | 3 horas |
-| TD-009 | testing | high | acknowledged | 2-3 horas |
+| TD-009 | testing | high | resolved | 2-3 horas |
 | TD-010 | security | medium | acknowledged | 3-6 horas |
 | TD-011 | maintainability | low | acknowledged | 1 hora |
 | TD-012 | testing | low | acknowledged | 4 horas |
@@ -403,5 +418,5 @@ Baja (cuando el proyecto crezca):
 
 ---
 
-*Última actualización: 2026-09-02*
+*Última actualización: 2026-11-15*
 *Responsable: Usuario (owner del proyecto)*

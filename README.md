@@ -53,7 +53,7 @@ cd Api
 dotnet run
 ```
 
-API runs at `http://localhost:5000` (HTTP only in development).
+API runs at `http://localhost:5239` in development (HTTP only; the port comes from `Api/Properties/launchSettings.json`). In Docker it listens on `http://localhost:8080`.
 
 ## Testing
 
@@ -68,7 +68,88 @@ dotnet test tests/Api.Tests/
 dotnet test --logger "console;verbosity=detailed"
 ```
 
-**Known issue**: 8/24 integration tests fail due to auth cookie propagation in the test environment. The tests verify auth works correctly via browser/client but the test setup has issues with cookie handling across HttpClient instances. The failing tests are pre-existing issues in the test harness, not in the production code.
+Suite completa en verde: **121 tests** (59 de `Application.Tests`, 50 de `Infrastructure.Tests` y 12 de integración de `Api.Tests`). El CI los corre en cada PR y en cada push a `main`.
+
+## Docker
+
+### 1. Con Docker Compose (recomendado)
+
+```bash
+docker compose up --build
+```
+
+La API queda en `http://localhost:8080` y la base SQLite se persiste en el volumen `api-data`.
+
+> Los valores por defecto de `docker-compose.yml` son **solo para desarrollo local**. Son públicos: nunca los uses en producción.
+
+### 2. Con `docker build` + `docker run`
+
+```bash
+docker build -t ajn-portfolio-backend:local .
+
+docker run -d --name ajn-portfolio-backend \
+  -p 8080:8080 \
+  -e Jwt__Secret=local-dev-secret-at-least-32-characters-long \
+  -e Jwt__Issuer=AJNPortfolio \
+  -e Jwt__Audience=AJNPortfolioAdmin \
+  -e Bootstrap__Token=local-bootstrap-token \
+  -e Cors__AllowedOrigins=http://localhost:4321 \
+  ajn-portfolio-backend:local
+```
+
+### 3. Variables de entorno
+
+| Variable | Obligatoria | Descripción |
+|----------|:-----------:|-------------|
+| `ConnectionStrings__DefaultConnection` | Sí | Ruta del archivo SQLite (`Data Source=/data/portfolio.db`) |
+| `Jwt__Secret` | Sí | Clave de firma del JWT (mínimo 32 caracteres) |
+| `Jwt__Issuer` | Sí | Claim `iss` del JWT |
+| `Jwt__Audience` | Sí | Claim `aud` del JWT |
+| `Jwt__ExpirationMinutes` | No | Vida del token (600 por defecto) |
+| `Bootstrap__Token` | No | Token para registrar el primer admin |
+| `Cors__AllowedOrigins` | No | Orígenes permitidos, separados por comas |
+| `Database__AutoMigrate` | No | Aplica las migraciones al arrancar (`true` en la imagen, `false` en `appsettings.json`) |
+
+Los secretos **no** se hornean en la imagen: se inyectan por variable de entorno en cada `docker run` o desde el dashboard de Render.
+
+### 4. Dónde vive la base de datos
+
+| Escenario | Ubicación |
+|-----------|-----------|
+| `docker compose up` | Volumen nombrado `api-data`, montado en `/data` |
+| `docker run -v ./data:/data` | Carpeta `./data` del host (el entrypoint le ajusta el propietario para el usuario `app`) |
+| `docker run` sin volumen | Se pierde al borrar el contenedor |
+
+Resetear los datos:
+
+```bash
+docker compose down -v                 # borra el volumen y la base
+docker rm -f ajn-portfolio-backend     # borra el contenedor
+```
+
+### 5. Conectar el frontend (Astro)
+
+```bash
+PUBLIC_API_BASE_URL=http://localhost:8080
+```
+
+## CI/CD
+
+| Workflow | Cuándo corre | Qué hace |
+|----------|--------------|----------|
+| `.github/workflows/ci.yml` | Pull requests y push a `main` | `restore` + `build` + **121 tests**, construye la imagen Docker y levanta un contenedor de prueba (*smoke test*) contra `/health` y `/projects` |
+| `.github/workflows/cd.yml` | Push a `main` (y manual) | Publica la imagen en GHCR (`ghcr.io/<repo>`) con tags `latest` y `sha`, y opcionalmente dispara el deploy de Render |
+
+**Secretos de GitHub**:
+
+| Nombre | Tipo | Uso |
+|--------|------|-----|
+| `GITHUB_TOKEN` | Automático | Publicar la imagen en GHCR (requiere `packages: write`) |
+| `RENDER_DEPLOY_HOOK_URL` | Secret (opcional) | Dispara el deploy de Render. Si no está configurado, el deploy se omite sin error |
+
+**Protección de `main` (obligatoria)**: el CI solo protege el repo si `main` exige el check verde.
+
+Repo → **Settings** → **Branches** → **Branch protection rules** → **Require status checks to pass** → marcar el check `build-test`.
 
 ## Project Structure
 
