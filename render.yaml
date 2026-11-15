@@ -1,0 +1,44 @@
+# Render Blueprint: servicio web con Docker para el backend .NET 10.
+#
+# IMPORTANTE: despues del primer deploy hay que leer del dashboard de Render los
+# valores de 'Jwt__Secret' y 'Bootstrap__Token' (se generan automaticamente con
+# generateValue) y configurar 'Cors__AllowedOrigins' con el dominio real del
+# frontend. Ningun secreto se guarda en este archivo.
+
+services:
+  - type: web
+    name: ajn-portfolio-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    plan: starter
+    # Disco persistente para la base SQLite (1 GB).
+    disk:
+      name: portfolio-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      # La base vive en el disco persistente, no en el sistema de archivos efimero.
+      - key: ConnectionStrings__DefaultConnection
+        value: Data Source=/data/portfolio.db
+      # Aplica las migraciones de EF Core al arrancar (contenedor limpio).
+      - key: Database__AutoMigrate
+        value: "true"
+      - key: Jwt__Issuer
+        value: AJNPortfolio
+      - key: Jwt__Audience
+        value: AJNPortfolioAdmin
+      # Se genera en el dashboard de Render: hay que leerlo y guardarlo.
+      - key: Jwt__Secret
+        generateValue: true
+      # Se genera en el dashboard de Render: hay que leerlo y guardarlo.
+      - key: Bootstrap__Token
+        generateValue: true
+      # sync: false -> el valor se edita desde el dashboard de Render.
+      - key: Cors__AllowedOrigins
+        sync: false
