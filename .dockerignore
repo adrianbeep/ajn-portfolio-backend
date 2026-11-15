@@ -1,0 +1,38 @@
+# Control de versiones e historial de Git
+.git
+.gitignore
+.gitattributes
+
+# Workflows de GitHub Actions (no hacen falta dentro de la imagen)
+.github
+
+# Artefactos de compilacion
+**/bin
+**/obj
+bin
+obj
+
+# Bases de datos SQLite locales
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# IDEs y herramientas
+.vs
+.vscode
+.idea
+.atl
+
+# Tests, documentacion y contenido que no va a produccion
+tests
+docs
+*.md
+README.md
+
+# Secretos y configuracion local
+.env
+.env.*
+
+# Configuracion de agentes
+.claude
+.pi
