@@ -1,518 +1,547 @@
-# AJN Portfolio — Backend API Contract
+# AJN Portfolio — Frontend API Contract & Screen-to-Endpoint Guide
 
-> Reference for frontend consumers. Last updated: 2026-09-30.
-> Source of truth: `Api/Endpoints/*.cs` and `Application/**/*.Dtos/*.cs`.
+> **Single source of truth for frontend consumers.**  
+> Aligned with backend implementation in `Api/Endpoints/*.cs` and `Application/**/*.cs`.
 
-## 1. Overview
+---
 
-- **Stack**: ASP.NET Core 10 minimal hosting, EF Core 10 (SQLite), MediatR 14, FluentValidation 12, ASP.NET Core Identity.
-- **Architecture**: Clean Architecture (Domain → Application → Infrastructure → Api), CQRS via MediatR with pipeline behaviors (Logging → Audit → Authorization → Validation).
-- **Domain**: A personal portfolio CMS with two aggregates — **Project** and **Contribution** — exposed publicly to visitors and managed through cookie-authenticated admin endpoints.
-- **Status**: 162 tests green (77 Application + 50 Infrastructure + 35 Api integration). All 17 roadmap phases closed.
+## 1. Screen-to-Endpoint Master Map
 
-## 2. Quick start (backend up)
+This matrix connects every frontend view/route directly to its backing endpoints, authentication requirements, and critical UI states.
 
-```bash
-# from repo root
-dotnet ef database update \
-  --project Infrastructure/Infrastructure.csproj \
-  --startup-project Api/Api.csproj
-dotnet run --project Api/Api.csproj
-```
+| # | Screen / View | Suggested Frontend Route | Backing Endpoint(s) | Method | Auth | Primary UI States |
+|---|---------------|--------------------------|---------------------|--------|------|-------------------|
+| **1** | **Landing / Home** | `/` | `/projects`<br>`/contributions` | `GET`<br>`GET` | Public | Loading skeleton, Partial error, Featured items |
+| **2** | **Projects Catalog** | `/projects` | `/projects?page={p}&pageSize={s}` | `GET` | Public | Loading grid, Empty state, Paged grid |
+| **3** | **Project Detail** | `/projects/:slug` | `/projects/:slug` | `GET` | Public | Loading hero/content, 404 Not Found, Rendered markdown |
+| **4** | **Contributions Catalog** | `/contributions` | `/contributions?page={p}&pageSize={s}` | `GET` | Public | Loading grid, Empty state, Paged cards with external links |
+| **5** | **Contribution Detail** | `/contributions/:slug` | `/contributions/:slug` | `GET` | Public | Loading hero/content, 404 Not Found, External PR button, Rendered markdown |
+| **6** | **Admin Login** | `/admin/login` | `/admin/auth/login` | `POST` | Public | Submitting spinner, 401 Invalid Credentials, Form validation |
+| **7** | **Admin Projects Dashboard** | `/admin/projects` | `/admin/projects`<br>`/admin/projects/:slug`<br>`/admin/projects/:slug/restore` | `GET`<br>`DELETE`<br>`POST` | Admin Cookie | Loading table, Empty list, Soft-delete confirmation, Restore action |
+| **8** | **Admin Project Create** | `/admin/projects/new` | `/admin/projects` | `POST` | Admin Cookie | Form validation errors, Markdown live preview, 201 Created redirect |
+| **9** | **Admin Project Edit** | `/admin/projects/:slug/edit` | `/admin/projects/:slug`<br>`/admin/projects/:slug` | `GET`<br>`PUT` | Admin Cookie | Loading form, Form validation errors, Markdown live preview, 200 OK toast |
+| **10** | **Admin Contributions Dashboard** | `/admin/contributions` | `/admin/contributions`<br>`/admin/contributions/:slug`<br>`/admin/contributions/:slug/restore` | `GET`<br>`DELETE`<br>`POST` | Admin Cookie | Loading table, Empty list, Soft-delete confirmation, Restore action |
+| **11** | **Admin Contribution Create** | `/admin/contributions/new` | `/admin/contributions` | `POST` | Admin Cookie | Form validation errors, Markdown live preview, 201 Created redirect |
+| **12** | **Admin Contribution Edit** | `/admin/contributions/:slug/edit` | `/admin/contributions/:slug`<br>`/admin/contributions/:slug` | `GET`<br>`PUT` | Admin Cookie | Loading form, Form validation errors, Markdown live preview, 200 OK toast |
 
-Default listen URL is whatever `Properties/launchSettings.json` says (`http://localhost:5xxx` in Development). The DB is created automatically at `Infrastructure/portfolio-dev.db`.
+---
 
-### Bootstrap the first admin user
+## 2. Core Architecture Rules for Frontend
 
-The first admin is created manually:
+### 2.1 Base URL & Environment
 
-1. Call `POST /admin/auth/register` with header `X-Bootstrap-Token: AdminAJN2026!` (the default in `appsettings.Development.json` — change it before deploy). The endpoint creates the user but **does not** assign the `Admin` role.
-2. Connect to `portfolio-dev.db` and insert into `AspNetUserRoles`:
+| Environment | Base URL | Notes |
+|-------------|----------|-------|
+| **Development** | `http://localhost:5000` (or `https://localhost:5001`) | Set in frontend `.env` (e.g., `VITE_API_URL` or `PUBLIC_API_URL`) |
+| **Production** | Configured API domain (e.g., Render backend URL) | Configured with HTTPS |
 
-   ```sql
-   INSERT INTO AspNetUserRoles (UserId, RoleId)
-   VALUES (
-     (SELECT Id FROM AspNetUsers WHERE Email = 'you@example.com'),
-     '11111111-1111-1111-1111-111111111111'  -- Admin role seed
-   );
-   ```
+> [!IMPORTANT]
+> **No API version prefix exists.** Routes are mounted directly at root (e.g. `/projects`, `/admin/*`).
 
-3. Now log in via `POST /admin/auth/login` with the same credentials. The browser will receive a cookie. Subsequent admin requests are authenticated by that cookie alone.
+### 2.2 Authentication & Cookies (`credentials: "include"`)
 
-> **Heads up**: TD-002 tracks that the `Jwt:Secret` and `Bootstrap:Token` are still in `appsettings.Development.json`. They must be moved to env vars before any real deploy.
+The backend uses **HTTP-only cookie authentication** (`auth_token`).
 
-## 3. Base URL
+1. **`credentials: "include"` is mandatory** on every `fetch` / `axios` call directed to `/admin/*`, including `/admin/auth/login`. Without this, the browser will neither store nor send the cookie.
+2. **Never attempt to read the JWT token in JavaScript**: The cookie is `HttpOnly`, `SameSite=Strict`, and `Secure` (over HTTPS).
+3. **Session Expiry Handling**: When a session expires or is missing, admin requests return `401 Unauthorized`. The frontend must implement an HTTP response interceptor to redirect the user to `/admin/login`.
+4. **Logout**: Call `POST /admin/auth/logout` with `credentials: "include"` to clear the server cookie.
 
-All paths below are relative to the backend base URL, e.g. `http://localhost:5000`.
+### 2.3 Slug Immutability (Critical Contract Detail)
 
-- Public routes are mounted at `/projects` and `/contributions`.
-- Admin routes are mounted at `/admin/*`.
-- There is **no** API version prefix. Routes are stable; breaking changes will require a new prefix.
+- Entity `slug` is established **only during creation** (`POST`).
+- On `PUT /admin/projects/{slug}` and `PUT /admin/contributions/{slug}`, the route parameter `{slug}` identifies the entity.
+- The `slug` and `id` properties in update request bodies are ignored by the backend. **Slugs cannot be updated.**
 
-## 4. Conventions
+### 2.4 Markdown Rendering & Security
 
-### Timestamps
+The `content` field returned by detail endpoints is raw markdown.
+- **Frontend responsibility**: You **MUST** sanitize rendered HTML (e.g., using `DOMPurify` or your framework's markdown pipeline) to prevent XSS.
 
-All `DateTime` fields are UTC and serialized as ISO 8601 strings (e.g. `"2026-09-30T18:00:00Z"`).
+### 2.5 Error Handling (RFC 7807 ProblemDetails)
 
-### Identifiers
-
-All aggregate IDs are `Guid` (string form `"22222222-2222-2222-2222-222222222222"` in JSON).
-
-### Slugs
-
-- Lowercase letters, digits, and single hyphens. No leading/trailing hyphens, no double hyphens, no uppercase, no underscores, no spaces.
-- Regex (anchored): `^[a-z0-9]+(?:-[a-z0-9]+)*$`
-- Max length: 80 characters.
-- Examples: `my-portfolio`, `api-gestion`, `proj1`.
-
-### State
-
-`state` on `Project`/`Contribution` is the string `"Active"` or `"Inactive"`. Never a number.
-
-### Content
-
-`content` is raw markdown. **Sanitization is the frontend's responsibility** — the backend does not touch it.
-
-### Pagination
-
-Public list endpoints are paginated:
-
-| Query param | Default | Min | Max | Notes |
-|-------------|---------|-----|-----|-------|
-| `page` | `1` | `1` | — | Out-of-range values are clamped server-side. |
-| `pageSize` | `20` | `1` | `100` | Out-of-range values are clamped server-side. |
-
-Response shape:
-
-```ts
-{
-  items: T[],
-  total: number,    // total matching the filter, across all pages
-  page: number,     // current page (1-based)
-  pageSize: number  // actual page size used
-}
-```
-
-Admin list endpoints (`GET /admin/projects`, `GET /admin/contributions`) are **not paginated** — they return every record. See TD-009.
-
-### Errors
-
-All error responses are [RFC 7807 ProblemDetails](https://datatracker.ietf.org/doc/html/rfc7807). Example `400`:
+All error responses return standard `ProblemDetails`:
 
 ```json
 {
   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
   "title": "ValidationFailed",
   "status": 400,
-  "detail": "Slug : Slug must be lowercase letters, digits, and single hyphens (e.g. 'my-project').",
+  "detail": "Title : Title is required.; Slug : Slug must be lowercase letters, numbers, and hyphens only.",
   "traceId": "0HM..."
 }
 ```
 
-- `title` is a stable machine-readable code (see table below).
-- `detail` is a human-readable message.
-- `type` and `traceId` are added by ASP.NET Core automatically.
+#### Parsing Validation Errors
 
-#### Error code → HTTP mapping
+When `title === "ValidationFailed"`, `detail` formats errors as:  
+`"{Field} : {Message}; {Field2} : {Message2}"`
 
-| `title` value | HTTP | Meaning |
-|---------------|------|---------|
-| `ValidationFailed` | 400 | One or more fields failed FluentValidation. `detail` lists the field/message pairs separated by `; `. |
-| `ProjectNotFound` | 404 | Project with the given slug does not exist (or is soft-deleted). |
-| `ContributionNotFound` | 404 | Same for Contribution. |
-| `IdentityError` | 400 | Generic Identity failure (should be rare; usually means a real internal error). |
-| `Unauthorized` | 401 | No/invalid auth cookie on an `[AdminOnly]` command. |
-| `Forbidden` | 403 | Authenticated but not in the `Admin` role. |
-| `Auth.InvalidCredentials` | 401 | Wrong email or password on `/admin/auth/login`. |
-| `Auth.EmailAlreadyExists` | 409 | Tried to register an email that's already in the system. |
-| `Auth.BootstrapAlreadyUsed` | 409 | (Reserved; not currently emitted — the bootstrap flow does not enforce single-use.) |
-| Anything else | 400 | Default fallback. |
-
-## 5. Authentication
-
-The API uses **HTTP-only cookie authentication**, not `Authorization: Bearer`.
-
-### Flow
-
-1. Client calls `POST /admin/auth/login` (or `/admin/auth/register` during bootstrap) with `{ email, password }`.
-2. Server returns `200 OK` with `{ token, expiresAt }` in the body **and** sets a cookie:
-
-   - Name: `auth_token`
-   - `HttpOnly` (JS cannot read it)
-   - `SameSite=Strict`
-   - `Secure` only when the request was HTTPS
-   - Value: a JWT signed with HS256, valid for `ExpirationMinutes` (default `600` = 10 hours). No refresh tokens.
-
-3. Browser sends the cookie automatically on subsequent requests to the same origin. Cross-origin requests need `credentials: 'include'`.
-4. Backend's `JwtBearer` middleware reads the cookie via `OnMessageReceived` and validates the JWT.
-5. When the JWT expires, the next admin request returns `401`. Redirect the user to the login page.
-
-### Bootstrap token
-
-`POST /admin/auth/register` requires the header `X-Bootstrap-Token: <value>` to match `Bootstrap:Token` in config. Default is `AdminAJN2026!`. Change it before going to production.
-
-### Logout
-
-`POST /admin/auth/logout` clears the cookie. Always `200 OK`.
-
-## 6. CORS
-
-Configured via `Cors:AllowedOrigins` in `appsettings.json`. The default `appsettings.Development.json` includes:
-
-```
-http://localhost:4321   (Astro)
-http://localhost:5173   (Vite)
-```
-
-- Requests from any other origin are rejected with a CORS error.
-- `AllowCredentials()` is enabled (required because of the auth cookie). Wildcards are not allowed.
-
-## 7. Endpoints
-
-### 7.1 Public — Projects
-
-| Method | Path | Query | Auth | Returns |
-|--------|------|-------|------|---------|
-| `GET` | `/projects` | `page`, `pageSize` | none | `200 ProjectListDto` |
-| `GET` | `/projects/{slug}` | — | none | `200 ProjectDetailDto` / `404 ProjectNotFound` |
-
-### 7.2 Public — Contributions
-
-| Method | Path | Query | Auth | Returns |
-|--------|------|-------|------|---------|
-| `GET` | `/contributions` | `page`, `pageSize` | none | `200 ContributionListDto` |
-| `GET` | `/contributions/{slug}` | — | none | `200 ContributionDetailDto` / `404 ContributionNotFound` |
-
-### 7.3 Auth
-
-| Method | Path | Headers | Body | Returns |
-|--------|------|---------|------|---------|
-| `POST` | `/admin/auth/register` | `X-Bootstrap-Token` | `RegisterRequest` | `200 AuthResponse` + cookie / `401` (bad token) / `409 Auth.EmailAlreadyExists` |
-| `POST` | `/admin/auth/login` | — | `LoginRequest` | `200 AuthResponse` + cookie / `401 Auth.InvalidCredentials` |
-| `POST` | `/admin/auth/logout` | — | — | `200 { message }` + clears cookie |
-
-### 7.4 Admin — Projects
-
-All require cookie + `Admin` role. Group prefix `/admin/projects`.
-
-| Method | Path | Body | Returns |
-|--------|------|------|---------|
-| `GET` | `/admin/projects` | — | `200 ProjectAdminListDto[]` (no pagination) |
-| `GET` | `/admin/projects/{slug}` | — | `200 ProjectDetailDto` / `404 ProjectNotFound` |
-| `POST` | `/admin/projects` | `CreateProjectRequest` | `201 { id }` with `Location: /projects/{slug}` / `400 ValidationFailed` |
-| `PUT` | `/admin/projects/{slug}` | `UpdateProjectRequest` | `200 ProjectDetailDto` / `404 ProjectNotFound` |
-| `DELETE` | `/admin/projects/{slug}` | — | `204` / `404 ProjectNotFound` |
-| `POST` | `/admin/projects/{slug}/restore` | — | `200` / `404 ProjectNotFound` |
-
-> ⚠ The `UpdateProjectRequest` body field `id` is **ignored**. The handler identifies the project by the slug in the path. Send any `Guid` value (or your local id) — it will not be used.
-
-### 7.5 Admin — Contributions
-
-All require cookie + `Admin` role. Group prefix `/admin/contributions`.
-
-| Method | Path | Body | Returns |
-|--------|------|------|---------|
-| `GET` | `/admin/contributions` | — | `200 ContributionAdminListDto[]` (no pagination) |
-| `GET` | `/admin/contributions/{slug}` | — | `200 ContributionDetailDto` / `404 ContributionNotFound` |
-| `POST` | `/admin/contributions` | `CreateContributionRequest` | `201 { id }` with `Location: /contributions/{slug}` / `400 ValidationFailed` |
-| `PUT` | `/admin/contributions/{slug}` | `UpdateContributionRequest` | `200 ContributionDetailDto` / `404 ContributionNotFound` |
-| `DELETE` | `/admin/contributions/{slug}` | — | `204` / `404 ContributionNotFound` |
-| `POST` | `/admin/contributions/{slug}/restore` | — | `200` / `404 ContributionNotFound` |
-
-> ⚠ Same caveat: the `id` field in `UpdateContributionRequest` is ignored.
-
-## 8. Schemas
-
-### 8.1 Common
+Use this utility to map errors back to form inputs:
 
 ```ts
-// All DateTime fields are ISO 8601 UTC strings.
-// All Guid fields are hyphenated lowercase hex strings.
+export function parseValidationErrors(detail?: string): Record<string, string> {
+  if (!detail) return {};
+  const errors: Record<string, string> = {};
+  
+  detail.split(";").forEach((chunk) => {
+    const [field, message] = chunk.split(" : ");
+    if (field && message) {
+      // Lowercase first letter to match form field names (e.g., "Title" -> "title")
+      const key = field.trim().charAt(0).toLowerCase() + field.trim().slice(1);
+      errors[key] = message.trim();
+    }
+  });
 
-type Guid = string;     // "22222222-2222-2222-2222-222222222222"
-type ISODateTime = string; // "2026-09-30T18:00:00Z"
-type State = "Active" | "Inactive";
-
-interface PagedList<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-interface ProblemDetails {
-  type?: string;
-  title: string;     // stable error code
-  status: number;
-  detail?: string;
-  traceId?: string;
+  return errors;
 }
 ```
 
-### 8.2 Projects
+#### Error Code Reference
 
+| Status | `title` Code | Meaning / Frontend Action |
+|--------|--------------|---------------------------|
+| `400` | `ValidationFailed` | Display field-level errors next to form inputs. |
+| `401` | `Unauthorized` | Redirect to `/admin/login`. |
+| `401` | `Auth.InvalidCredentials` | Show toast / alert: "Invalid email or password". |
+| `403` | `Forbidden` | Authenticated user lacks `Admin` role. Show permission error. |
+| `404` | `ProjectNotFound` / `ContributionNotFound` | Render 404 view or route back to catalog. |
+| `409` | `Auth.EmailAlreadyExists` | Show email error: "Email is already registered". |
+
+---
+
+## 3. Screen-by-Screen Specifications
+
+---
+
+### Screen 1: Landing / Home (`/`)
+
+#### Purpose
+Showcase intro, recent highlighted projects, and latest open-source contributions.
+
+#### Backing Requests
+Execute concurrently on page load:
 ```ts
-interface ProjectSummaryDto {
-  id: Guid;
-  slug: string;
-  title: string;
-  urlThumbnail: string;
-  description: string;
-}
+// Fetch top 3 or 6 projects
+GET /projects?page=1&pageSize=6
 
-interface ProjectDetailDto {
-  id: Guid;
-  title: string;
-  slug: string;
-  urlThumbnail: string;
-  description: string;
-  content: string;        // markdown
-  state: State;
-  createdAt: ISODateTime;
-  updatedAt: ISODateTime | null;
-}
+// Fetch top 3 or 6 contributions
+GET /contributions?page=1&pageSize=6
+```
 
-type ProjectListDto = PagedList<ProjectSummaryDto>;
+#### Response Shapes
+Returns `ProjectListDto` and `ContributionListDto`.
 
-interface ProjectAdminListDto {
-  id: Guid;
-  slug: string;
-  title: string;
-  createdAt: ISODateTime;
-  deletedAt: ISODateTime | null;  // present iff soft-deleted
-}
+#### UI State Specifications
+- **Loading**: Show skeleton cards for project grid and contribution list.
+- **Empty**: If `items.length === 0`, show friendly placeholder (e.g., "No projects published yet").
+- **Success**:
+  - Projects: Render thumbnail (`urlThumbnail`), title, and short description. Card links to `/projects/${slug}`.
+  - Contributions: Render title, description, and link to `/contributions/${slug}` (or direct external PR button `urlPrContribution`).
 
-interface CreateProjectRequest {
-  title: string;            // 1..120
-  slug: string;             // 1..80, regex above
-  urlThumbnail: string;     // 1..500, absolute http(s) URL
-  description: string;      // 1..500
-  content: string;          // >= 1 char, markdown
-}
+---
 
-interface UpdateProjectRequest {
-  id: Guid;                 // ⚠ ignored by the server
-  title: string;
-  slug: string;
-  urlThumbnail: string;
-  description: string;
-  content: string;
+### Screen 2: Projects Catalog (`/projects`)
+
+#### Purpose
+Paginated grid of all active portfolio projects.
+
+#### Backing Request
+```http
+GET /projects?page={page}&pageSize={pageSize}
+```
+- Query Parameters:
+  - `page` (number, default `1`, min `1`)
+  - `pageSize` (number, default `20`, range `1..100`)
+
+#### Success Response (200 OK)
+```json
+{
+  "items": [
+    {
+      "id": "e4f8d67a-1234-4b56-8c90-abcdef123456",
+      "slug": "portfolio-backend",
+      "title": "AJN Portfolio Backend",
+      "urlThumbnail": "https://cdn.example.com/thumbnails/backend.webp",
+      "description": "Clean Architecture ASP.NET Core 10 backend with CQRS and EF Core."
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "pageSize": 20
 }
 ```
 
-### 8.3 Contributions
+#### UI State Specifications
+- **Pagination controls**: Calculate `totalPages = Math.ceil(total / pageSize)`. Disable Prev when `page === 1`; disable Next when `page === totalPages`.
+- **Empty State**: Show when `total === 0`.
+- **Error State**: Show retry button on network failure.
 
-```ts
-interface ContributionSummaryDto {
-  id: Guid;
-  slug: string;
-  title: string;
-  urlThumbnail: string;
-  urlPrContribution: string;   // link to PR / external contribution page
-  description: string;
-}
+---
 
-interface ContributionDetailDto {
-  id: Guid;
-  title: string;
-  slug: string;
-  urlThumbnail: string;
-  urlPrContribution: string;
-  description: string;
-  content: string;             // markdown
-  state: State;
-  createdAt: ISODateTime;
-  updatedAt: ISODateTime | null;
-}
+### Screen 3: Project Detail (`/projects/:slug`)
 
-type ContributionListDto = PagedList<ContributionSummaryDto>;
+#### Purpose
+Full project presentation with markdown case study, tech stack, and metadata.
 
-interface ContributionAdminListDto {
-  id: Guid;
-  slug: string;
-  title: string;
-  createdAt: ISODateTime;
-  deletedAt: ISODateTime | null;
-}
+#### Backing Request
+```http
+GET /projects/{slug}
+```
 
-interface CreateContributionRequest {
-  title: string;
-  slug: string;
-  urlThumbnail: string;
-  urlPrContribution: string;   // 1..500, absolute http(s) URL
-  description: string;
-  content: string;
-}
-
-interface UpdateContributionRequest {
-  id: Guid;                    // ⚠ ignored by the server
-  title: string;
-  slug: string;
-  urlThumbnail: string;
-  urlPrContribution: string;
-  description: string;
-  content: string;
+#### Success Response (200 OK)
+```json
+{
+  "id": "e4f8d67a-1234-4b56-8c90-abcdef123456",
+  "title": "AJN Portfolio Backend",
+  "slug": "portfolio-backend",
+  "urlThumbnail": "https://cdn.example.com/thumbnails/backend.webp",
+  "description": "Clean Architecture ASP.NET Core 10 backend with CQRS and EF Core.",
+  "content": "# Overview\n\nDetailed markdown content describing the architecture...",
+  "state": "Active",
+  "createdAt": "2026-09-30T18:00:00Z",
+  "updatedAt": "2026-10-05T14:30:00Z"
 }
 ```
 
-### 8.4 Auth
+#### UI State Specifications
+- **404 Not Found**: If backend returns `404 ProjectNotFound`, display a dedicated "Project not found" screen with a back-link to `/projects`.
+- **Content Rendering**: Render `content` with a Markdown component + syntax highlighter. Ensure HTML sanitization is active.
 
-```ts
-interface RegisterRequest {
-  email: string;
-  password: string;
-}
+---
 
-interface LoginRequest {
-  email: string;
-  password: string;
-}
+### Screen 4: Contributions Catalog (`/contributions`)
 
-interface AuthResponse {
-  token: string;        // JWT (also stored in the httpOnly cookie)
-  expiresAt: ISODateTime;
-}
+#### Purpose
+Paginated list of open-source contributions, bugfixes, and community PRs.
 
-interface LogoutResponse {
-  message: string;      // "Logged out successfully"
-}
+#### Backing Request
+```http
+GET /contributions?page={page}&pageSize={pageSize}
+```
 
-interface CreatedResponse {
-  id: Guid;             // returned by POST /admin/{projects,contributions}
+#### Success Response (200 OK)
+```json
+{
+  "items": [
+    {
+      "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "slug": "dotnet-runtime-fix",
+      "title": "Fix memory leak in ThreadPool work queue",
+      "urlThumbnail": "https://cdn.example.com/thumbs/dotnet.svg",
+      "urlPrContribution": "https://github.com/dotnet/runtime/pull/99999",
+      "description": "Resolved race condition during concurrent dequeues."
+    }
+  ],
+  "total": 15,
+  "page": 1,
+  "pageSize": 20
 }
 ```
 
-## 9. Examples
+#### UI State Specifications
+- **External PR link**: Include a direct "View on GitHub / External" button pointing to `urlPrContribution` with `target="_blank" rel="noopener noreferrer"`.
+- **Card click**: Navigates to `/contributions/:slug` for the full post-mortem / contribution writeup.
 
-### 9.1 Fetch — list public projects
+---
 
-```ts
-const res = await fetch("http://localhost:5000/projects?page=1&pageSize=20");
-if (!res.ok) throw new Error(`HTTP ${res.status}`);
-const data: ProjectListDto = await res.json();
+### Screen 5: Contribution Detail (`/contributions/:slug`)
+
+#### Purpose
+In-depth write-up of a contribution (context, challenge, solution, and learnings).
+
+#### Backing Request
+```http
+GET /contributions/{slug}
 ```
 
-### 9.2 Fetch — login (sets cookie)
-
-```ts
-const res = await fetch("http://localhost:5000/admin/auth/login", {
-  method: "POST",
-  credentials: "include",       // required to receive + send the cookie
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email, password }),
-});
-```
-
-### 9.3 Fetch — admin create project
-
-```ts
-const res = await fetch("http://localhost:5000/admin/projects", {
-  method: "POST",
-  credentials: "include",       // sends the auth_token cookie
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    title: "My New Project",
-    slug: "my-new-project",
-    urlThumbnail: "https://example.com/thumb.png",
-    description: "Short summary for cards",
-    content: "# Markdown content\n\nDetails go here.",
-  } satisfies CreateProjectRequest),
-});
-
-if (res.status === 401) {
-  // cookie invalid/missing/expired — bounce to /
-}
-if (res.status === 403) {
-  // user is not Admin — surface to admin
-}
-if (res.status === 400) {
-  const problem = await res.json() as ProblemDetails;
-  // problem.title === "ValidationFailed"
-  // problem.detail has field-by-field messages
-}
-if (res.status === 201) {
-  const { id } = await res.json() as CreatedResponse;
+#### Success Response (200 OK)
+```json
+{
+  "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "title": "Fix memory leak in ThreadPool work queue",
+  "slug": "dotnet-runtime-fix",
+  "urlThumbnail": "https://cdn.example.com/thumbs/dotnet.svg",
+  "urlPrContribution": "https://github.com/dotnet/runtime/pull/99999",
+  "description": "Resolved race condition during concurrent dequeues.",
+  "content": "## Background\n\nWhile profiling high-concurrency workloads...",
+  "state": "Active",
+  "createdAt": "2026-08-15T12:00:00Z",
+  "updatedAt": null
 }
 ```
 
-### 9.4 Fetch — bootstrap register
+---
 
-```ts
-const res = await fetch("http://localhost:5000/admin/auth/register", {
-  method: "POST",
-  credentials: "include",
-  headers: {
-    "Content-Type": "application/json",
-    "X-Bootstrap-Token": "AdminAJN2026!",
+### Screen 6: Admin Login (`/admin/login`)
+
+#### Purpose
+Admin authentication form (Email + Password).
+
+#### Backing Request
+```http
+POST /admin/auth/login
+Content-Type: application/json
+```
+```json
+{
+  "email": "admin@example.com",
+  "password": "SecurePassword123!"
+}
+```
+> [!IMPORTANT]
+> The request MUST include `credentials: "include"`. The server returns `200 OK` and writes the `auth_token` HTTP-only cookie.
+
+#### Success Response (200 OK)
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsIn...",
+  "expiresAt": "2026-11-16T04:39:00Z"
+}
+```
+*Action*: Redirect immediately to `/admin/projects`.
+
+#### Error Responses
+- `401 Unauthorized` with `title: "Auth.InvalidCredentials"`: Show inline message: *"Invalid email or password."*
+- `400 Bad Request` with `title: "ValidationFailed"`: Invalid email format or missing fields.
+
+---
+
+### Screen 7: Admin Projects Dashboard (`/admin/projects`)
+
+#### Purpose
+Admin table listing **all** projects (both active and soft-deleted), with options to create, edit, delete, or restore.
+
+#### Backing Requests
+1. **Load projects**:
+   ```http
+   GET /admin/projects
+   ```
+   *Note: Not paginated; returns full array.*
+   
+2. **Soft-delete project**:
+   ```http
+   DELETE /admin/projects/{slug}
+   ```
+   *Response*: `204 No Content` on success.
+
+3. **Restore soft-deleted project**:
+   ```http
+   POST /admin/projects/{slug}/restore
+   ```
+   *Response*: `200 OK` on success.
+
+#### Success Response for Listing (200 OK)
+```json
+[
+  {
+    "id": "e4f8d67a-1234-4b56-8c90-abcdef123456",
+    "slug": "portfolio-backend",
+    "title": "AJN Portfolio Backend",
+    "createdAt": "2026-09-30T18:00:00Z",
+    "deletedAt": null
   },
-  body: JSON.stringify({ email, password }),
-});
+  {
+    "id": "c3d2e1f0-9876-5432-10fe-dcba98765432",
+    "slug": "old-prototype",
+    "title": "Legacy Prototype",
+    "createdAt": "2025-01-10T09:00:00Z",
+    "deletedAt": "2026-05-12T11:20:00Z"
+  }
+]
 ```
 
-### 9.5 cURL — register + create project
+#### UI State Specifications
+- If `deletedAt !== null`:
+  - Show row with a visual "Archived / Soft-Deleted" badge.
+  - Disable "Edit" button or mark as archived.
+  - Show "Restore" action button instead of "Delete".
+- If `deletedAt === null`:
+  - Show "Edit" button (links to `/admin/projects/${slug}/edit`).
+  - Show "Delete" button with a confirmation modal.
 
-```bash
-TOKEN="AdminAJN2026!"
+---
 
-# 1. Register the first user
-curl -i -X POST http://localhost:5000/admin/auth/register \
-  -H "Content-Type: application/json" \
-  -H "X-Bootstrap-Token: $TOKEN" \
-  -c cookies.txt \
-  -d '{"email":"you@example.com","password":"Password1!"}'
+### Screen 8: Admin Project Create (`/admin/projects/new`)
 
-# 2. (Manually) INSERT into AspNetUserRoles to grant Admin
+#### Purpose
+Form to publish a new portfolio project.
 
-# 3. Login (cookies.txt gets the auth_token cookie)
-curl -i -X POST http://localhost:5000/admin/auth/login \
-  -H "Content-Type: application/json" \
-  -c cookies.txt \
-  -d '{"email":"you@example.com","password":"Password1!"}'
-
-# 4. Create a project
-curl -i -X POST http://localhost:5000/admin/projects \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{
-    "title": "My New Project",
-    "slug": "my-new-project",
-    "urlThumbnail": "https://example.com/thumb.png",
-    "description": "Short summary",
-    "content": "# Markdown content"
-  }'
+#### Backing Request
+```http
+POST /admin/projects
+Content-Type: application/json
+```
+```json
+{
+  "title": "NextGen Payment Gateway",
+  "slug": "nextgen-payment-gateway",
+  "urlThumbnail": "https://cdn.example.com/thumbs/payments.png",
+  "description": "High-throughput payment orchestration engine.",
+  "content": "# NextGen Payments\n\nFull architecture breakdown..."
+}
 ```
 
-## 10. Common pitfalls (read these)
+#### Form Validation Rules
+| Field | Required | Max Length | Format / Pattern |
+|-------|----------|------------|------------------|
+| `title` | Yes | 200 chars | Non-empty text |
+| `slug` | Yes | 100 chars | `^[a-z0-9]+(?:-[a-z0-9]+)*$` (lowercase, numbers, single hyphens) |
+| `urlThumbnail` | Yes | 2000 chars | Valid URL |
+| `description` | Yes | 1000 chars | Non-empty summary |
+| `content` | Yes | 50000 chars | Markdown text |
 
-1. **`credentials: "include"` is non-negotiable** on every admin request — without it the cookie is never sent and every admin call returns `401`. Same for receiving it after login.
+#### Success Response (201 Created)
+- Header: `Location: /projects/nextgen-payment-gateway`
+- Body:
+```json
+{
+  "id": "7b8c9d0e-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+}
+```
+*Action*: Toast "Project created successfully!" and redirect to `/admin/projects`.
 
-2. **The `id` in `Update*Request` is ignored.** Send any valid Guid; the server uses the slug from the path. This is a known wart (see D4 in the roadmap) and may be cleaned up later.
+---
 
-3. **Admin lists are not paginated.** `GET /admin/projects` and `GET /admin/contributions` return the full set. Don't render them straight to the DOM without a filter for very large portfolios.
+### Screen 9: Admin Project Edit (`/admin/projects/:slug/edit`)
 
-4. **404 vs soft-delete.** When a project is soft-deleted, `GET /projects/{slug}` returns `404 ProjectNotFound` (because of the global query filter), but `GET /admin/projects` still shows it with `deletedAt` populated. To bring it back, call `POST /admin/projects/{slug}/restore`.
+#### Purpose
+Form to update an existing project's title, description, thumbnail, or markdown body.
 
-5. **Validation errors come back as `400 ValidationFailed` with all field errors concatenated in `detail`.** The format is `"{Field} : {message}; {Field2} : {message2}"`. If you want structured errors, split on `; ` and then on ` : ` — the format is stable but is not a proper array.
+#### Backing Requests
+1. **Initial Form Load**:
+   ```http
+   GET /admin/projects/{slug}
+   ```
+   Populates form fields with current data.
 
-6. **Slug changes via PUT.** `PUT /admin/projects/{old-slug}` with `{ slug: "new-slug", ... }` will move the project to the new slug. The response uses the new slug in any subsequent `Location` headers and in the body. Plan your redirect strategy carefully if you have URLs cached client-side.
+2. **Form Submit**:
+   ```http
+   PUT /admin/projects/{slug}
+   Content-Type: application/json
+   ```
+   ```json
+   {
+     "id": "e4f8d67a-1234-4b56-8c90-abcdef123456",
+     "title": "AJN Portfolio Backend v2",
+     "slug": "portfolio-backend",
+     "urlThumbnail": "https://cdn.example.com/thumbnails/backend-v2.webp",
+     "description": "Updated summary of the Clean Architecture backend.",
+     "content": "# Updated Content..."
+   }
+   ```
 
-7. **No `If-Match` / ETags.** Updates are last-write-wins. There's no concurrency control yet. If two admins edit the same project concurrently, the second save overwrites the first silently.
+> [!NOTE]
+> The `id` and `slug` fields in the payload are ignored by the server. The project is identified solely by the `{slug}` in the URL. Disable or make the slug field read-only in the UI.
 
-8. **HTTPS in dev.** `UseHttpsRedirection` will 307 any HTTP request to HTTPS. If you're running the backend on plain HTTP, follow the redirect or disable the middleware. In integration tests the redirect is sidestepped by using `https://localhost` as the base address.
+#### Success Response (200 OK)
+Returns the updated `ProjectDetailDto`.  
+*Action*: Toast "Changes saved successfully!".
 
-9. **No rate limiting yet.** Login endpoints are not rate-limited (TD-003). Don't ship to the open internet without addressing that.
+---
 
-10. **JWT cannot be inspected by the frontend.** The token is in an httpOnly cookie. Use the standard 401 → redirect-to-login flow to detect expiry. The `expiresAt` in the `AuthResponse` body is informational only — the cookie's actual expiry is what matters.
+### Screen 10: Admin Contributions Dashboard (`/admin/contributions`)
 
-## 11. TypeScript helpers (copy-paste)
+#### Purpose
+Admin table listing all contributions with active/deleted indicators and quick actions.
 
-If you're building a typed client, drop these into your project:
+#### Backing Requests
+- **List all**: `GET /admin/contributions`
+- **Soft-delete**: `DELETE /admin/contributions/{slug}` (returns `204`)
+- **Restore**: `POST /admin/contributions/{slug}/restore` (returns `200`)
+
+#### Success Response for Listing (200 OK)
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "slug": "dotnet-runtime-fix",
+    "title": "Fix memory leak in ThreadPool work queue",
+    "createdAt": "2026-08-15T12:00:00Z",
+    "deletedAt": null
+  }
+]
+```
+
+---
+
+### Screen 11: Admin Contribution Create (`/admin/contributions/new`)
+
+#### Purpose
+Form to register a new open-source contribution.
+
+#### Backing Request
+```http
+POST /admin/contributions
+Content-Type: application/json
+```
+```json
+{
+  "title": "Added OpenTelemetry Tracing to FastEndpoints",
+  "slug": "fastendpoints-opentelemetry",
+  "urlThumbnail": "https://cdn.example.com/thumbs/fe.png",
+  "urlPrContribution": "https://github.com/FastEndpoints/FastEndpoints/pull/542",
+  "description": "Implemented activity source and distributed context propagation.",
+  "content": "### Problem Statement\n\nFastEndpoints lacked native trace exports..."
+}
+```
+
+#### Form Validation Rules
+| Field | Required | Max Length | Pattern |
+|-------|----------|------------|---------|
+| `title` | Yes | 200 chars | Non-empty text |
+| `slug` | Yes | 100 chars | `^[a-z0-9]+(?:-[a-z0-9]+)*$` |
+| `urlThumbnail` | Yes | 2000 chars | Valid URL |
+| `urlPrContribution` | Yes | 2000 chars | Valid external URL |
+| `description` | Yes | 1000 chars | Non-empty summary |
+| `content` | Yes | 50000 chars | Markdown text |
+
+#### Success Response (201 Created)
+- Header: `Location: /contributions/fastendpoints-opentelemetry`
+- Body: `{ "id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f" }`
+
+---
+
+### Screen 12: Admin Contribution Edit (`/admin/contributions/:slug/edit`)
+
+#### Purpose
+Form to update an existing contribution.
+
+#### Backing Requests
+1. **Initial Load**: `GET /admin/contributions/{slug}`
+2. **Submit Update**:
+   ```http
+   PUT /admin/contributions/{slug}
+   Content-Type: application/json
+   ```
+   ```json
+   {
+     "id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+     "title": "Added OpenTelemetry Tracing to FastEndpoints (v2)",
+     "slug": "fastendpoints-opentelemetry",
+     "urlThumbnail": "https://cdn.example.com/thumbs/fe-v2.png",
+     "urlPrContribution": "https://github.com/FastEndpoints/FastEndpoints/pull/542",
+     "description": "Updated description with telemetry benchmarks.",
+     "content": "### Updated Content..."
+   }
+   ```
+
+#### Success Response (200 OK)
+Returns `ContributionDetailDto`.
+
+---
+
+## 4. TypeScript Definitions (Copy-Paste Ready)
+
+Create `src/types/api.ts` in your frontend project:
 
 ```ts
+/**
+ * Common Types
+ */
 export type Guid = string;
 export type ISODateTime = string;
-export type State = "Active" | "Inactive";
+export type EntityState = "Active" | "Inactive";
 
 export interface PagedList<T> {
   items: T[];
@@ -527,8 +556,12 @@ export interface ProblemDetails {
   status: number;
   detail?: string;
   traceId?: string;
+  instance?: string;
 }
 
+/**
+ * Projects
+ */
 export interface ProjectSummaryDto {
   id: Guid;
   slug: string;
@@ -544,7 +577,7 @@ export interface ProjectDetailDto {
   urlThumbnail: string;
   description: string;
   content: string;
-  state: State;
+  state: EntityState;
   createdAt: ISODateTime;
   updatedAt: ISODateTime | null;
 }
@@ -576,6 +609,9 @@ export interface UpdateProjectRequest {
   content: string;
 }
 
+/**
+ * Contributions
+ */
 export interface ContributionSummaryDto {
   id: Guid;
   slug: string;
@@ -593,7 +629,7 @@ export interface ContributionDetailDto {
   urlPrContribution: string;
   description: string;
   content: string;
-  state: State;
+  state: EntityState;
   createdAt: ISODateTime;
   updatedAt: ISODateTime | null;
 }
@@ -627,12 +663,15 @@ export interface UpdateContributionRequest {
   content: string;
 }
 
-export interface RegisterRequest {
+/**
+ * Authentication
+ */
+export interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface LoginRequest {
+export interface RegisterRequest {
   email: string;
   password: string;
 }
@@ -651,9 +690,67 @@ export interface CreatedResponse {
 }
 ```
 
-## 12. Related docs
+---
 
-- `docs/roadmap-implementacion.md` — backend roadmap (all 17 phases closed).
-- `docs/diagrams/architecture.md` — backend architecture diagrams.
-- `docs/backlog-deuda-tecnica.md` — known gaps (rate limiting, secrets, etc.).
-- `README.md` — how to build, run, and test the backend.
+## 5. Frontend API Client Boilerplate
+
+Here is a ready-to-use fetch wrapper configured with `credentials: "include"`, automatic 401 handling, and RFC 7807 error extraction:
+
+```ts
+// src/api/client.ts
+import type { ProblemDetails } from "../types/api";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+export class ApiError extends Error {
+  constructor(public problem: ProblemDetails) {
+    super(problem.detail || problem.title || "An API error occurred");
+    this.name = "ApiError";
+  }
+}
+
+export async function apiClient<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const config: RequestInit = {
+    ...options,
+    credentials: "include", // Essential for HttpOnly cookie authentication
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  };
+
+  const response = await fetch(url, config);
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return undefined as unknown as T;
+  }
+
+  // Handle Errors
+  if (!response.ok) {
+    if (response.status === 401 && !path.includes("/admin/auth/login")) {
+      // Session expired or unauthorized: redirect to login
+      window.location.href = "/admin/login";
+    }
+
+    let problem: ProblemDetails;
+    try {
+      problem = await response.json();
+    } catch {
+      problem = {
+        title: "HttpError",
+        status: response.status,
+        detail: response.statusText,
+      };
+    }
+    throw new ApiError(problem);
+  }
+
+  return response.json();
+}
+```
