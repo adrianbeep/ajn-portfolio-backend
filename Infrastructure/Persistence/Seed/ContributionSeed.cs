@@ -4,26 +4,22 @@ namespace Infrastructure.Persistence.Seed;
 
 public static class ContributionSeed
 {
-    public static readonly Contribution[] Data = new[]
-    {
-        new Contribution(
-            id: new Guid("22222222-2222-2222-2222-222222222222"),
-            createdAt: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            title: "Mi Portfolio",
-            slug: "mi-portfolio",
-            urlThumbnail: "https://example.com/img.png",
-            urlPrContribution: "https://example.com/img.png",
-            description: "Sitio web de portfolio personal",
-            content: "Contenido del proyecto de portfolio..."),
-
-        new Contribution(
-            id: new Guid("33333333-3333-3333-3333-333333333333"),
-            createdAt: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
-            title: "API de Gestión",
-            slug: "api-gestion",
-            urlThumbnail: "https://example.com/api.png",
-            urlPrContribution: "https://example.com/api.png",
-            description: "API REST para gestión de proyectos",
-            content: "Documentación y endpoints del proyecto...")
-    };
+    // Sin contribuciones sembradas, a propósito.
+    //
+    // Lo que había acá era un clon del seed de proyectos: los mismos GUIDs
+    // (22222222-…, 33333333-…), los mismos títulos, los mismos slugs, la misma
+    // fecha de creación y un contenido de relleno de una línea. La API publicaba
+    // contribuciones que el dueño del sitio nunca escribió, y el frontend las
+    // horneaba en el HTML como si fueran reales.
+    //
+    // La base tiene que reflejar la realidad: cero contribuciones.
+    //
+    // El catálogo se va a poblar con el CRUD de administración
+    // (POST /admin/contributions), que es una pieza de trabajo posterior. Cuando
+    // exista, las contribuciones se crean por la API y no por un seed: un seed con
+    // contenido real se convierte en deuda que hay que migrar cada vez que el
+    // texto cambia.
+    // El tipo del elemento va explícito porque un inicializador vacío no
+    // permite inferirlo: `new[] { }` no compila.
+    public static readonly Contribution[] Data = new Contribution[] { };
 }
