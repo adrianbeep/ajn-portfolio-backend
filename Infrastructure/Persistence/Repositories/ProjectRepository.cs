@@ -28,7 +28,10 @@ public class ProjectRepository : IProjectRepository
     {
         return await _db.Projects
             .AsNoTracking()
+            // CreatedAt no es único: ThenByDescending(Id) desempata para que el orden
+            // sea total y la paginación no repita ni pierda filas.
             .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .ToListAsync(ct);
     }
 
@@ -37,7 +40,10 @@ public class ProjectRepository : IProjectRepository
         return await _db.Projects
             .IgnoreQueryFilters()
             .AsNoTracking()
+            // CreatedAt no es único: ThenByDescending(Id) desempata para que el orden
+            // sea total y la paginación no repita ni pierda filas.
             .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .ToListAsync(ct);
     }
 
@@ -45,7 +51,10 @@ public class ProjectRepository : IProjectRepository
     {
         return await _db.Projects
             .AsNoTracking()
+            // CreatedAt no es único: ThenByDescending(Id) desempata para que el corte
+            // de página sea estable entre llamadas y una fila no caiga en dos páginas.
             .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);

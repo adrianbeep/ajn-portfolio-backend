@@ -28,7 +28,10 @@ public class ContributionRepository : IContributionRepository
     {
         return await _db.Contributions
             .AsNoTracking()
+            // CreatedAt no es único: ThenByDescending(Id) desempata para que el orden
+            // sea total y la paginación no repita ni pierda filas.
             .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
             .ToListAsync(ct);
     }
     
@@ -37,7 +40,10 @@ public class ContributionRepository : IContributionRepository
         return await _db.Contributions
             .IgnoreQueryFilters()
             .AsNoTracking()
+            // CreatedAt no es único: ThenByDescending(Id) desempata para que el orden
+            // sea total y la paginación no repita ni pierda filas.
             .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
             .ToListAsync(ct);
     }
     
@@ -45,7 +51,10 @@ public class ContributionRepository : IContributionRepository
     {
         return await _db.Contributions
             .AsNoTracking()
+            // CreatedAt no es único: ThenByDescending(Id) desempata para que el corte
+            // de página sea estable entre llamadas y una fila no caiga en dos páginas.
             .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
