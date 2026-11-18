@@ -13,7 +13,7 @@ public static class ProjectSeed
             slug: "mi-portfolio",
             urlThumbnail: "https://example.com/img.png",
             description: "Sitio web de portfolio personal",
-            content: """
+            content: SeedText.Normalize("""
                 ## El problema
 
                 El sitio tiene que publicar contenido que vive en un backend .NET y que todavía cambia: proyectos nuevos, textos reescritos, imágenes actualizadas. La primera versión de la idea era servir el frontend contra la API en tiempo de ejecución. Se descartó por razones concretas, no por gusto técnico.
@@ -173,7 +173,7 @@ public static class ProjectSeed
                 La segunda es que el orden de los plugins no es un detalle de implementación. Sanitizar y resaltar parecían intercambiables por nombre, pero no lo eran: uno produce el markup que el otro necesita, y el sanitizador, por diseño, borra atributos en lugar de entenderlos. El bug era invisible a simple vista porque el sitio no rompía; sólo perdía el resaltado y la navegación por teclado.
 
                 La tercera es que el build es parte del producto: el comportamiento en build time tiene que estar tan cuidado como el de runtime, y esa decisión necesita su propio job en CI para que nadie la revierta sin darse cuenta.
-                """),
+                """)),
 
         new Project(
             id: new Guid("33333333-3333-3333-3333-333333333333"),
@@ -182,7 +182,7 @@ public static class ProjectSeed
             slug: "api-gestion",
             urlThumbnail: "https://example.com/api.png",
             description: "API REST para gestión de proyectos",
-            content: """
+            content: SeedText.Normalize("""
                 ## El problema
 
                 El backend de este portfolio tiene un solo consumidor conocido: el frontend que lo consume en build time. Eso parece una simplificación y en realidad es la decisión de diseño que ordena todo lo demás.
@@ -339,6 +339,6 @@ public static class ProjectSeed
                 La tercera es que un formato de error estándar vale más que un error bien documentado. `ProblemDetails` no es más expresivo que un JSON propio; lo importante es que cualquier cliente HTTP sabe interpretarlo sin un documento adicional.
 
                 Y la cuarta, la más incómoda: los límites de longitud parecían un detalle de validación, pero son los que mantienen la frontera entre un backend que almacena contenido y un backend que lo interpreta. Al no validar el formato, el backend se mantiene pequeño, y ese es exactamente el objetivo.
-                """),
+                """)),
     };
 }
