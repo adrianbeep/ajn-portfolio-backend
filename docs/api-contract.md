@@ -11,7 +11,7 @@ This matrix connects every frontend view/route directly to its backing endpoints
 
 | # | Screen / View | Suggested Frontend Route | Backing Endpoint(s) | Method | Auth | Primary UI States |
 |---|---------------|--------------------------|---------------------|--------|------|-------------------|
-| **1** | **Landing / Home** | `/` | `/projects`<br>`/contributions` | `GET`<br>`GET` | Public | Loading skeleton, Partial error, Featured items |
+| **1** | **Landing / Home** | `/` | `/projects` | `GET` | Public | Loading skeleton, Partial error, Featured items |
 | **2** | **Projects Catalog** | `/projects` | `/projects?page={p}&pageSize={s}` | `GET` | Public | Loading grid, Empty state, Paged grid |
 | **3** | **Project Detail** | `/projects/:slug` | `/projects/:slug` | `GET` | Public | Loading hero/content, 404 Not Found, Rendered markdown |
 | **4** | **Contributions Catalog** | `/contributions` | `/contributions?page={p}&pageSize={s}` | `GET` | Public | Loading grid, Empty state, Paged cards with external links |
@@ -32,7 +32,7 @@ This matrix connects every frontend view/route directly to its backing endpoints
 
 | Environment | Base URL | Notes |
 |-------------|----------|-------|
-| **Development** | `http://localhost:5000` (or `https://localhost:5001`) | Set in frontend `.env` (e.g., `VITE_API_URL` or `PUBLIC_API_URL`) |
+| **Development** | `http://localhost:5000` (or `https://localhost:5001`) | Set in frontend `.env` (`PUBLIC_API_BASE_URL`) |
 | **Production** | Configured API domain (e.g., Render backend URL) | Configured with HTTPS |
 
 > [!IMPORTANT]
@@ -108,6 +108,20 @@ export function parseValidationErrors(detail?: string): Record<string, string> {
 | `404` | `ProjectNotFound` / `ContributionNotFound` | Render 404 view or route back to catalog. |
 | `409` | `Auth.EmailAlreadyExists` | Show email error: "Email is already registered". |
 
+### 2.6 Pagination
+
+Both listing endpoints (`GET /projects`, `GET /contributions`) take the same two query parameters and return the same envelope.
+
+| Parameter | Default | Range | Notes |
+|-----------|---------|-------|-------|
+| `page` | `1` | `1..∞` | Anything below `1` is clamped to `1`. |
+| `pageSize` | `20` | `1..100` | Anything below `1` falls back to `20`; anything above `100` is clamped to `100`. |
+
+- The response echoes the **applied** `page` and `pageSize`, not the requested ones. The client never has to guess whether its request was honoured.
+- `total` is the count of **all non-deleted rows** of the catalogue, not the size of the current page.
+- `totalPages = ceil(total / pageSize)`.
+- Items are ordered by **`CreatedAt DESC, Id DESC`**. `CreatedAt` alone is not unique, so the `Id` tiebreaker makes the order total: a row can never appear on two pages, and no row is skipped at a page boundary. A client that stitches the pages together (or walks all of them) gets every row exactly once.
+
 ---
 
 ## 3. Screen-by-Screen Specifications
@@ -117,27 +131,21 @@ export function parseValidationErrors(detail?: string): Record<string, string> {
 ### Screen 1: Landing / Home (`/`)
 
 #### Purpose
-Showcase intro, recent highlighted projects, and latest open-source contributions.
+Show the intro and the most recent projects. The home does **not** list contributions: they have their own catalogue at `/contributions/`, and the home stays about projects.
 
 #### Backing Requests
-Execute concurrently on page load:
 ```ts
-// Fetch top 3 or 6 projects
-GET /projects?page=1&pageSize=6
-
-// Fetch top 3 or 6 contributions
-GET /contributions?page=1&pageSize=6
+// Fetch the 4 projects previewed on the home
+GET /projects?page=1&pageSize=4
 ```
 
 #### Response Shapes
-Returns `ProjectListDto` and `ContributionListDto`.
+Returns `ProjectListDto`.
 
 #### UI State Specifications
-- **Loading**: Show skeleton cards for project grid and contribution list.
+- **Loading**: Show skeleton cards for the project grid.
 - **Empty**: If `items.length === 0`, show friendly placeholder (e.g., "No projects published yet").
-- **Success**:
-  - Projects: Render thumbnail (`urlThumbnail`), title, and short description. Card links to `/projects/${slug}`.
-  - Contributions: Render title, description, and link to `/contributions/${slug}` (or direct external PR button `urlPrContribution`).
+- **Success**: Render thumbnail (`urlThumbnail`), title, and short description. Card links to `/projects/${slug}`.
 
 ---
 
@@ -163,7 +171,9 @@ GET /projects?page={page}&pageSize={pageSize}
       "slug": "portfolio-backend",
       "title": "AJN Portfolio Backend",
       "urlThumbnail": "https://cdn.example.com/thumbnails/backend.webp",
-      "description": "Clean Architecture ASP.NET Core 10 backend with CQRS and EF Core."
+      "description": "Clean Architecture ASP.NET Core 10 backend with CQRS and EF Core.",
+      "state": "Active",
+      "createdAt": "2026-09-30T18:00:00Z"
     }
   ],
   "total": 42,
@@ -230,7 +240,9 @@ GET /contributions?page={page}&pageSize={pageSize}
       "title": "Fix memory leak in ThreadPool work queue",
       "urlThumbnail": "https://cdn.example.com/thumbs/dotnet.svg",
       "urlPrContribution": "https://github.com/dotnet/runtime/pull/99999",
-      "description": "Resolved race condition during concurrent dequeues."
+      "description": "Resolved race condition during concurrent dequeues.",
+      "state": "Active",
+      "createdAt": "2026-08-15T12:00:00Z"
     }
   ],
   "total": 15,
@@ -568,6 +580,8 @@ export interface ProjectSummaryDto {
   title: string;
   urlThumbnail: string;
   description: string;
+  state: EntityState;
+  createdAt: ISODateTime;
 }
 
 export interface ProjectDetailDto {
@@ -619,6 +633,8 @@ export interface ContributionSummaryDto {
   urlThumbnail: string;
   urlPrContribution: string;
   description: string;
+  state: EntityState;
+  createdAt: ISODateTime;
 }
 
 export interface ContributionDetailDto {
@@ -700,7 +716,7 @@ Here is a ready-to-use fetch wrapper configured with `credentials: "include"`, a
 // src/api/client.ts
 import type { ProblemDetails } from "../types/api";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 export class ApiError extends Error {
   constructor(public problem: ProblemDetails) {
