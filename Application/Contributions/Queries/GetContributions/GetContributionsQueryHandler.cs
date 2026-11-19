@@ -33,7 +33,8 @@ public class GetContributionsQueryHandler
 
         var items = contributions
             .Select(c => new ContributionSummaryDto(
-                c.Id, c.Slug, c.Title, c.UrlThumbnail, c.UrlPrContribution, c.Description))
+                c.Id, c.Slug, c.Title, c.UrlThumbnail, c.UrlPrContribution, c.Description,
+                c.State.ToString(), c.CreatedAt))
             .ToList();
 
         var dto = new ContributionListDto(items, total, page, pagesize);
