@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Text.Json;
 using Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -21,30 +19,15 @@ public sealed class DomainExceptionHandler : IExceptionHandler
         if (exception is not DomainValidationException domainException)
             return false;
 
-        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-
-        // El mismo tipo de contenido que emite Results.Problem en el camino
-        // normal: una respuesta que se distingue por un parametro suelto no
-        // es la misma respuesta.
-        httpContext.Response.ContentType = "application/problem+json";
-
-        // El cuerpo se escribe aqui a proposito: el ProblemDetailsService
-        // respeta el header Accept y con "Accept: text/html" no escribe nada,
-        // dejando un 500 sin cuerpo ni tipo de contenido.
-        var problem = new
-        {
-            type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            title = "ValidationFailed",
-            status = StatusCodes.Status400BadRequest,
-            detail = $"{domainException.Field} : {domainException.Message}",
-            traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier
-        };
-
-        await JsonSerializer.SerializeAsync(
-            httpContext.Response.Body,
-            problem,
-            options: null,
-            cancellationToken: cancellationToken);
+        // El cuerpo se escribe aqui a proposito, con el mismo escritor que
+        // usa el camino normal: asi el cliente no puede distinguir de donde
+        // salio el error, y el body no depende del header Accept.
+        await ProblemDetailsResponse.WriteAsync(
+            httpContext,
+            StatusCodes.Status400BadRequest,
+            "ValidationFailed",
+            $"{domainException.Field} : {domainException.Message}",
+            cancellationToken);
 
         return true;
     }

@@ -64,13 +64,15 @@ All error responses return standard `ProblemDetails`:
 
 ```json
 {
-  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
   "title": "ValidationFailed",
   "status": 400,
   "detail": "Title : Title is required.; Slug : Slug must be lowercase letters, numbers, and hyphens only.",
   "traceId": "0HM..."
 }
 ```
+
+Every error response has the same shape, whatever produced it: the application layer, a domain rule violation, or an unexpected failure. The `type` is the RFC 9110 reference for the status code (`15.5.1` for 400, `15.5.2` for 401, `15.5.4` for 403, `15.5.5` for 404, `15.5.10` for 409, `15.6.1` for 500). `detail` is omitted when there is nothing to say, and `traceId` is always present so a failure can be correlated with the server logs.
 
 #### Parsing Validation Errors
 

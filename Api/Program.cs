@@ -79,6 +79,10 @@ builder.Services.AddProblemDetails();
 // El handler de dominio se consulta antes que el ProblemDetailsService:
 // una violacion de las reglas de negocio es un 400, no un 500.
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();
+// El fallback: lo que el handler de dominio decline vuelve como un 500 con
+// cuerpo, escrito por la API y no por el ProblemDetailsService (que con
+// "Accept: text/html" no escribe nada).
+builder.Services.AddExceptionHandler<UnexpectedExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
 
 var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];

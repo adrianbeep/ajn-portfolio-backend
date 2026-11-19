@@ -41,10 +41,13 @@ public static class ResultExtensions
             _ => StatusCodes.Status400BadRequest
         };
         
-        return Results.Problem(
-            statusCode: statusCode,
-            title: error.Code,
-            detail: error.Message
+        // El cuerpo lo escribe el escritor de la API (y no Results.Problem):
+        // asi el camino normal y el camino de excepcion de dominio producen
+        // exactamente el mismo ProblemDetails.
+        return new ProblemDetailsResult(
+            statusCode,
+            error.Code,
+            error.Message
         );
     }
 }
