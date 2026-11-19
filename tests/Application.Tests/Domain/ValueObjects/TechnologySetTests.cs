@@ -1,5 +1,6 @@
 using Application.Projects.Commands.CreateProject;
 using Application.Projects.Commands.UpdateProject;
+using Domain.Exceptions;
 using Domain.ValueObjects;
 using FluentAssertions;
 using Xunit;
@@ -37,8 +38,10 @@ public class TechnologySetTests
     {
         Action act = () => TechnologySet.Create(new[] { "Astro", "TypeScript", "EF Core", "SQLite", "Vercel" });
 
-        act.Should().Throw<ArgumentException>()
-            .WithParameterName("technologies");
+        var exception = act.Should().Throw<DomainValidationException>().Which;
+
+        exception.Field.Should().Be("Technologies");
+        exception.Message.Should().Be(TechnologySet.Messages.TooManyItems);
     }
 
     [Fact]
@@ -62,8 +65,10 @@ public class TechnologySetTests
     {
         Action act = () => TechnologySet.Create(new[] { "   " });
 
-        act.Should().Throw<ArgumentException>()
-            .WithParameterName("technologies");
+        var exception = act.Should().Throw<DomainValidationException>().Which;
+
+        exception.Field.Should().Be("Technologies");
+        exception.Message.Should().Be(TechnologySet.Messages.EmptyValue);
     }
 
     [Fact]
@@ -73,8 +78,10 @@ public class TechnologySetTests
 
         Action act = () => TechnologySet.Create(new[] { tooLong });
 
-        act.Should().Throw<ArgumentException>()
-            .WithParameterName("technologies");
+        var exception = act.Should().Throw<DomainValidationException>().Which;
+
+        exception.Field.Should().Be("Technologies");
+        exception.Message.Should().Be(TechnologySet.Messages.TooLong);
     }
 
     [Fact]
@@ -92,8 +99,10 @@ public class TechnologySetTests
     {
         Action act = () => TechnologySet.Create(new[] { "React", "react" });
 
-        act.Should().Throw<ArgumentException>()
-            .WithParameterName("technologies");
+        var exception = act.Should().Throw<DomainValidationException>().Which;
+
+        exception.Field.Should().Be("Technologies");
+        exception.Message.Should().Be(TechnologySet.Messages.Duplicated);
     }
 
     [Fact]
@@ -101,8 +110,10 @@ public class TechnologySetTests
     {
         Action act = () => TechnologySet.Create(new[] { "React", "  React  " });
 
-        act.Should().Throw<ArgumentException>()
-            .WithParameterName("technologies");
+        var exception = act.Should().Throw<DomainValidationException>().Which;
+
+        exception.Field.Should().Be("Technologies");
+        exception.Message.Should().Be(TechnologySet.Messages.Duplicated);
     }
 
     [Fact]
@@ -130,6 +141,28 @@ public class TechnologySetTests
         source.Add("Next.js");
 
         result.Items.Should().Equal("React");
+    }
+
+    // El dominio es el dueno del texto de sus reglas: el validador de la capa
+    // de aplicacion usa los mismos mensajes, asi el camino normal y el camino
+    // de excepcion producen exactamente el mismo texto para el cliente.
+    [Fact]
+    public void Validators_UseTheDomainMessagesForTheTechnologyRules()
+    {
+        var tooMany = new[] { "Astro", "TypeScript", "EF Core", "SQLite", "Vercel" };
+        var empty = new[] { "   " };
+        var tooLong = new[] { new string('a', TechnologySet.MaxLength + 1) };
+        var duplicated = new[] { "React", "react" };
+
+        CreateValidatorMessage(tooMany).Should().Be(TechnologySet.Messages.TooManyItems);
+        CreateValidatorMessage(empty).Should().Be(TechnologySet.Messages.EmptyValue);
+        CreateValidatorMessage(tooLong).Should().Be(TechnologySet.Messages.TooLong);
+        CreateValidatorMessage(duplicated).Should().Be(TechnologySet.Messages.Duplicated);
+
+        UpdateValidatorMessage(tooMany).Should().Be(TechnologySet.Messages.TooManyItems);
+        UpdateValidatorMessage(empty).Should().Be(TechnologySet.Messages.EmptyValue);
+        UpdateValidatorMessage(tooLong).Should().Be(TechnologySet.Messages.TooLong);
+        UpdateValidatorMessage(duplicated).Should().Be(TechnologySet.Messages.Duplicated);
     }
 
     // Paridad: el validador y el value object tienen que rechazar exactamente
@@ -173,6 +206,26 @@ public class TechnologySetTests
             "el validador de actualizacion y el value object tienen que coincidir en cada entrada");
     }
 
+    private static string CreateValidatorMessage(IReadOnlyList<string> technologies)
+    {
+        var command = new CreateProjectCommand(
+            "Title", "my-slug", "https://img.png", "Desc", "Content", technologies);
+
+        return new CreateProjectCommandValidator().Validate(command).Errors
+            .Select(error => error.ErrorMessage)
+            .First();
+    }
+
+    private static string UpdateValidatorMessage(IReadOnlyList<string> technologies)
+    {
+        var command = new UpdateProjectCommand(
+            "my-slug", "Title", "Desc", "https://img.png", "Content", technologies);
+
+        return new UpdateProjectCommandValidator().Validate(command).Errors
+            .Select(error => error.ErrorMessage)
+            .First();
+    }
+
     private static bool CreateValidatorAccepts(IReadOnlyList<string>? technologies)
     {
         var command = new CreateProjectCommand(
@@ -196,7 +249,7 @@ public class TechnologySetTests
             TechnologySet.Create(technologies);
             return true;
         }
-        catch (ArgumentException)
+        catch (DomainValidationException)
         {
             return false;
         }

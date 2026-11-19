@@ -1,4 +1,5 @@
 using FluentValidation;
+using Domain.Helpers;
 using Application.Contributions.Commands.UpdateContribution;
 
 namespace Application.Contributions.Commands.UpdateContribution;
@@ -8,10 +9,10 @@ public class UpdateContributionCommandValidator : AbstractValidator<UpdateContri
     public UpdateContributionCommandValidator()
     {
         RuleFor(x => x.Slug)
-            .NotEmpty().WithMessage("Slug is required.");
+            .NotEmpty().WithMessage(Helpers.Messages.SlugRequired);
 
         RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("Title is required.")
+            .NotEmpty().WithMessage(Helpers.Messages.TitleRequired)
             .MaximumLength(200).WithMessage("Title must not exceed 200 characters.");
 
         RuleFor(x => x.Description)
