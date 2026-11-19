@@ -76,6 +76,9 @@ builder.Services.AddAuthentication(options =>
     });
 
 builder.Services.AddProblemDetails();
+// El handler de dominio se consulta antes que el ProblemDetailsService:
+// una violacion de las reglas de negocio es un 400, no un 500.
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
 
 var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];

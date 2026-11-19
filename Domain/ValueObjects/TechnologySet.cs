@@ -1,3 +1,5 @@
+using Domain.Exceptions;
+
 namespace Domain.ValueObjects;
 
 // Value object que encapsula las reglas de las tecnologias de un proyecto.
@@ -14,6 +16,26 @@ public sealed class TechnologySet
 {
     public const int MaxCount = 4;
     public const int MaxLength = 30;
+
+    // Los mensajes de las reglas son del dominio: los validadores de la capa
+    // de aplicacion los reutilizan tal cual, de modo que el camino normal (el
+    // validador) y el camino de excepcion dicen exactamente lo mismo.
+    // Los dos mensajes con numeros se derivan de los limites, nunca escritos
+    // a mano, para que no puedan desincronizarse.
+    public static class Messages
+    {
+        public static readonly string TooManyItems =
+            $"Technologies must not contain more than {MaxCount} items.";
+
+        public static readonly string EmptyValue =
+            "Technologies cannot contain empty values.";
+
+        public static readonly string TooLong =
+            $"Technologies items must not exceed {MaxLength} characters.";
+
+        public static readonly string Duplicated =
+            "Technologies must not contain duplicates.";
+    }
 
     public static TechnologySet Empty { get; } = new(Array.Empty<string>());
 
@@ -34,9 +56,7 @@ public sealed class TechnologySet
         var source = technologies.ToArray();
 
         if (source.Length > MaxCount)
-            throw new ArgumentException(
-                $"No se pueden declarar mas de {MaxCount} tecnologias (se recibieron {source.Length}).",
-                nameof(technologies));
+            throw new DomainValidationException("Technologies", Messages.TooManyItems);
 
         var normalized = new List<string>(source.Length);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -46,21 +66,15 @@ public sealed class TechnologySet
             var value = Normalize(raw);
 
             if (value.Length == 0)
-                throw new ArgumentException(
-                    $"La tecnologia '{Label(raw)}' no puede estar vacia.",
-                    nameof(technologies));
+                throw new DomainValidationException("Technologies", Messages.EmptyValue);
 
             if (value.Length > MaxLength)
-                throw new ArgumentException(
-                    $"La tecnologia '{value}' supera el maximo de {MaxLength} caracteres ({value.Length}).",
-                    nameof(technologies));
+                throw new DomainValidationException("Technologies", Messages.TooLong);
 
             // El primero que aparece gana: se conserva su formato y el orden
             // del autor. Los repetidos se rechazan aunque cambien de formato.
             if (!seen.Add(value))
-                throw new ArgumentException(
-                    $"La tecnologia '{value}' esta repetida.",
-                    nameof(technologies));
+                throw new DomainValidationException("Technologies", Messages.Duplicated);
 
             normalized.Add(value);
         }
@@ -80,6 +94,4 @@ public sealed class TechnologySet
         var parts = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         return string.Join(' ', parts);
     }
-
-    private static string Label(string? value) => value ?? "<null>";
 }

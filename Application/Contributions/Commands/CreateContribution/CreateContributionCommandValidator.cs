@@ -1,4 +1,5 @@
 using FluentValidation;
+using Domain.Helpers;
 using Application.Contributions.Commands.CreateContribution;
 
 namespace Application.Contributions.Commands.CreateContribution;
@@ -8,7 +9,7 @@ public class CreateContributionCommandValidator : AbstractValidator<CreateContri
     public CreateContributionCommandValidator()
     {
         RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("Title is required.")
+            .NotEmpty().WithMessage(Helpers.Messages.TitleRequired)
             .MaximumLength(200).WithMessage("Title must not exceed 200 characters.");
 
         RuleFor(x => x.Slug)
