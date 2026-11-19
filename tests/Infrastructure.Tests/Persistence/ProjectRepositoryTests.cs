@@ -312,4 +312,99 @@ public class ProjectRepositoryTests : IDisposable
         result[0].Slug.Should().Be("second");
         result[1].Slug.Should().Be("first");
     }
+
+    [Fact]
+    public async Task AddAsync_ProjectWithTechnologies_IsPersistedAndReadBackInOrder()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var project = new Project(
+            "Stacked Project",
+            "stacked-project",
+            "https://example.com/thumb.png",
+            "Description",
+            "Content",
+            new[] { "ASP.NET Core", "EF Core", "SQLite", "Astro" }
+        );
+
+        await _repository.AddAsync(project, ct);
+        await _db.SaveChangesAsync(ct);
+
+        // Se limpia el tracking para que la lectura venga de la fila y no de la
+        // entidad en memoria: si el conversor no funciona, esta prueba lo ve.
+        _db.ChangeTracker.Clear();
+
+        var retrieved = await _repository.GetBySlugAsync("stacked-project", ct);
+
+        retrieved.Should().NotBeNull();
+        retrieved!.Technologies.Should().Equal("ASP.NET Core", "EF Core", "SQLite", "Astro");
+    }
+
+    [Fact]
+    public async Task AddAsync_ProjectWithoutTechnologies_IsReadBackAsEmptyList()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var project = new Project(
+            "No Stack",
+            "no-stack",
+            "https://example.com/thumb.png",
+            "Description",
+            "Content"
+        );
+
+        await _repository.AddAsync(project, ct);
+        await _db.SaveChangesAsync(ct);
+
+        _db.ChangeTracker.Clear();
+
+        var retrieved = await _repository.GetBySlugAsync("no-stack", ct);
+
+        retrieved.Should().NotBeNull();
+        retrieved!.Technologies.Should().NotBeNull();
+        retrieved.Technologies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AddAsync_ProjectWithUnnormalizedTechnologies_IsPersistedNormalized()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var project = new Project(
+            "Normalized Project",
+            "normalized-project",
+            "https://example.com/thumb.png",
+            "Description",
+            "Content",
+            new[] { "  ASP.NET   Core  ", "react" }
+        );
+
+        await _repository.AddAsync(project, ct);
+        await _db.SaveChangesAsync(ct);
+
+        _db.ChangeTracker.Clear();
+
+        var retrieved = await _repository.GetBySlugAsync("normalized-project", ct);
+
+        retrieved.Should().NotBeNull();
+        retrieved!.Technologies.Should().Equal("ASP.NET Core", "react");
+    }
+
+    [Fact]
+    public async Task GetBySlugAsync_ProjectWithBlankTechnologiesColumn_IsReadBackAsEmptyList()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        // La columna se agrega a una tabla que ya tiene filas: una fila heredada
+        // puede venir con el valor vacio, y el conversor tiene que devolver una
+        // lista vacia, nunca null.
+        await _db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO projects (Id, Title, Slug, UrlThumbnail, Description, Content, State, CreatedAt, Technologies) " +
+            "VALUES ('44444444-4444-4444-4444-444444444444', 'Legacy', 'legacy', 'https://example.com/legacy.png', " +
+            "'Description', 'Content', 'Active', '2026-01-01 00:00:00', '')",
+            ct);
+
+        var retrieved = await _repository.GetBySlugAsync("legacy", ct);
+
+        retrieved.Should().NotBeNull();
+        retrieved!.Technologies.Should().NotBeNull();
+        retrieved.Technologies.Should().BeEmpty();
+    }
 }
