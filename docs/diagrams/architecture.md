@@ -126,17 +126,26 @@ Api and Infrastructure can reference Application and Domain. Application only re
 **Current (in `Application/DependencyInjection.cs`)**
 
 ```
-Request → LoggingBehavior → AuditBehavior → AuthorizationBehavior → ValidationBehavior → Handler
-         ← LoggingBehavior ← AuditBehavior ← AuthorizationBehavior ← ValidationBehavior ←
+Request → AuditBehavior → LoggingBehavior → AuthorizationBehavior → ValidationBehavior → Handler
+         ← AuditBehavior ← LoggingBehavior ← AuthorizationBehavior ← ValidationBehavior ←
 ```
 
-**Roadmap specifies**
+MediatR runs the behaviors in **registration order**: the first one registered is the outermost and therefore runs first. Internally it calls `GetServices(...).Reverse()` and then wraps each behavior around the previous one, so the two reversals cancel out and the net order is the registration order.
+
+**Roadmap specifies** (`docs/roadmap-implementacion.md`)
 
 ```
-Request → ValidationBehavior → AuthorizationBehavior → LoggingBehavior → AuditBehavior → Handler
+Request → LoggingBehavior → AuthorizationBehavior → ValidationBehavior → AuditBehavior → Handler
 ```
 
-The order difference means validation runs AFTER auth in the current implementation, which could log invalid input. This is a known drift from the roadmap.
+There is no drift from the roadmap. The implementation matches it on both points that carry a decision:
+
+- **Authorization runs before Validation.** An anonymous caller gets a 401 instead of a 400, so the payload schema of an admin endpoint is not discoverable by unauthenticated probing. It also mirrors how ASP.NET Core itself sequences authentication and authorization before the endpoint body.
+- **Logging sits outside both gates**, so every request leaves a trace, including the ones that get rejected.
+
+The implementation goes one step further than the roadmap by putting **Audit outside the gates as well**. The roadmap diagram places `AuditBehavior` innermost, which would mean the audit trail only records commands that were already authorized and valid, and the "failure" branch of `AuditBehavior` would practically never fire. With Audit outermost it records the attempt and its verdict, so rejected attempts stay visible instead of disappearing.
+
+`tests/Application.Tests/Behaviors/PipelineOrderTests.cs` pins this order, so a change of registrations fails the suite instead of silently drifting away from the docs.
 
 ## Auth Architecture
 
