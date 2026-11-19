@@ -375,6 +375,44 @@ Para un single-owner con HTTPS + cookie httpOnly + SameSite=Strict, probablement
 
 ---
 
+## [TD-013] Los finales de linea del codigo C# varian por plataforma
+
+**Tipo**: maintainability
+**Prioridad**: high
+**Estado**: resolved
+**Fecha de registro**: 2026-11-18
+**Fecha de resolución**: 2026-11-18
+
+**Impacto**: `.gitattributes` normalizaba `*.sh`, `*.yml`, `*.yaml` y `Dockerfile` a LF, pero no `*.cs`. Con `core.autocrlf=true` (default de Git for Windows) el working tree en Windows queda con CRLF mientras el indice guarda LF, y CI (ubuntu) hace checkout con LF.
+
+El contenido de un `.cs` se compila dentro de la aplicacion: los raw string literals embeben los saltos de linea tal cual estan en el archivo. El mismo codigo produce entonces dos modelos de EF Core distintos segun donde se compile, y el snapshot — que tiene que coincidir byte a byte — deja de coincidir.
+
+**Costo de no resolver**:
+- El PR #4 rompio CI tres veces con `PendingModelChangesWarning` antes de que se entendiera la causa
+- El fallo es invisible en la maquina del autor (compila bien) y solo aparece en Linux
+- "Build y tests" no lo detecta: los tests no ejecutan el Migrator. Solo lo caza el smoke test del contenedor, a los 3 minutos
+- Cualquier `.cs` con texto multilinea es una bomba: no hace falta tocar el seed para rearmarla
+
+**Plan de resolucion**:
+1. Declarar `*.cs text eol=lf` en `.gitattributes`, que fija indice y working tree en LF
+2. Normalizar el working tree del repo a LF
+3. Agregar un check en CI que falle si algun archivo versionado entra al indice con CRLF, o si algun `.cs` pierde el atributo `eol=lf`
+4. Normalizar ademas el valor del seed en codigo (`SeedText.Normalize`), para que el dato no dependa del checkout
+
+**Estimacion**: ~1 hora
+
+**Resolucion**: Quedo en tres piezas:
+
+| Pieza | Que aporta |
+|-------|-----------|
+| `.gitattributes` | `*.cs text eol=lf`: indice y working tree en LF en cualquier plataforma |
+| `.github/workflows/ci.yml` | Check `Verificar finales de linea` que corre antes de compilar: falla si hay CRLF en el indice o si un `.cs` pierde el atributo |
+| `Infrastructure/Persistence/Seed/SeedText.cs` | `SeedText.Normalize` deja el valor del seed en LF aunque el archivo se compile con CRLF |
+
+El check de CI es lo que convierte esto en una invariante verificada y no en una sugerencia: el error aparece en 20 segundos, en el job mas rapido, en lugar de a los 3 minutos del smoke test.
+
+---
+
 ## Resumen del Backlog
 
 | ID | Tipo | Prioridad | Estado | Estimación |
@@ -391,6 +429,7 @@ Para un single-owner con HTTPS + cookie httpOnly + SameSite=Strict, probablement
 | TD-010 | security | medium | acknowledged | 3-6 horas |
 | TD-011 | maintainability | low | acknowledged | 1 hora |
 | TD-012 | testing | low | acknowledged | 4 horas |
+| TD-013 | maintainability | high | resolved | 1 hora |
 
 **Total estimado**: ~5-7 días de trabajo
 
@@ -418,5 +457,5 @@ Baja (cuando el proyecto crezca):
 
 ---
 
-*Última actualización: 2026-11-15*
+*Última actualización: 2026-11-18*
 *Responsable: Usuario (owner del proyecto)*
