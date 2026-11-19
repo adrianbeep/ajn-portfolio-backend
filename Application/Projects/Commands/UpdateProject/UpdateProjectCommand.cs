@@ -10,4 +10,5 @@ public sealed record UpdateProjectCommand(
     string Title,
     string Description,
     string UrlThumbnail,
-    string Content) : IRequest<Result>;
+    string Content,
+    IReadOnlyList<string>? Technologies = null) : IRequest<Result>;

@@ -10,6 +10,7 @@
         string Title,
         string UrlThumbnail,
         string Description,
+        IReadOnlyList<string> Technologies,
         string State,
         DateTime CreatedAt);
 }

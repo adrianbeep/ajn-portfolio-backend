@@ -41,4 +41,21 @@ public class GetProjectsQueryHandlerTests
         result.Value.Items.Should().BeEmpty();
         result.Value.Total.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Handle_WithTechnologies_ReturnsThemInTheAuthorOrder()
+    {
+        var p1 = new Project("A", "slug-a", "url1", "d1", "c1", new[] { "Astro", "TypeScript" });
+        var p2 = new Project("B", "slug-b", "url2", "d2", "c2");
+        var fakeRepo = new FakeProjectRepository();
+        fakeRepo.Seed(p1, p2);
+        var handler = new GetProjectsQueryHandler(fakeRepo);
+        var query = new GetProjectsQuery(Page: 1, PageSize: 20);
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items[0].Technologies.Should().Equal("Astro", "TypeScript");
+        result.Value.Items[1].Technologies.Should().BeEmpty();
+    }
 }

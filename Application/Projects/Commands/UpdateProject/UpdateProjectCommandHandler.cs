@@ -33,7 +33,8 @@ public class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectCommand,
             command.Title,
             command.Description,
             command.UrlThumbnail,
-            command.Content);
+            command.Content,
+            command.Technologies);
         
         var updateResult = await _repository.UpdateAsync(project, ct);
         

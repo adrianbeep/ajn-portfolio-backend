@@ -70,7 +70,9 @@ public sealed class TechnologySet
 
     // Normalizar es recortar y colapsar los espacios internos en uno solo.
     // El valor normalizado es el que se compara y el que se persiste.
-    private static string Normalize(string? value)
+    // Es publico para que los validadores de la capa de aplicacion apliquen
+    // exactamente esta normalizacion y no diverjan de estas reglas.
+    public static string Normalize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return string.Empty;

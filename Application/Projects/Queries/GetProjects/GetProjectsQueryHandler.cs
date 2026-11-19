@@ -33,6 +33,7 @@ public class GetProjectsQueryHandler : IRequestHandler<GetProjectsQuery, Result<
         var items = projects
             .Select(p => new ProjectSummaryDto(
                 p.Id, p.Slug, p.Title, p.UrlThumbnail, p.Description,
+                p.Technologies,
                 p.State.ToString(), p.CreatedAt))
             .ToList();
 

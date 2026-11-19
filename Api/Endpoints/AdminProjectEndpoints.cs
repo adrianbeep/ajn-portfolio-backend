@@ -47,7 +47,8 @@ public static class AdminProjectEndpoints
                 request.Slug,
                 request.UrlThumbnail,
                 request.Description,
-                request.Content);
+                request.Content,
+                request.Technologies);
             var result = await sender.Send(command);
 
             if (!result.IsSuccess)
@@ -68,7 +69,8 @@ public static class AdminProjectEndpoints
                 request.Title,
                 request.Description,
                 request.UrlThumbnail,
-                request.Content);
+                request.Content,
+                request.Technologies);
             var result = await sender.Send(command);
             return result.ToHttpResult();
         });

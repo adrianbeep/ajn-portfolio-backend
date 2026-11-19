@@ -42,4 +42,37 @@ public class CreateProjectCommandHandlerTests
         fakeRepo.Projects.Should().BeEmpty();
         fakeUow.SaveChangesCallCount.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Handle_WithTechnologies_StoresThemInTheAuthorOrder()
+    {
+        var fakeRepo = new FakeProjectRepository();
+        var fakeUow = new FakeUnitOfWork();
+        var handler = new CreateProjectCommandHandler(fakeRepo, fakeUow);
+        var command = new CreateProjectCommand(
+            "Title", "my-slug", "https://img.png", "Desc", "Content",
+            new[] { "Astro", "TypeScript" });
+
+        var result = await handler.Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        fakeRepo.Projects.Should().ContainSingle();
+        fakeRepo.Projects[0].Technologies.Should().Equal("Astro", "TypeScript");
+    }
+
+    [Fact]
+    public async Task Handle_WithoutTechnologies_StoresAnEmptyList()
+    {
+        var fakeRepo = new FakeProjectRepository();
+        var fakeUow = new FakeUnitOfWork();
+        var handler = new CreateProjectCommandHandler(fakeRepo, fakeUow);
+        var command = new CreateProjectCommand(
+            "Title", "my-slug", "https://img.png", "Desc", "Content");
+
+        var result = await handler.Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        fakeRepo.Projects.Should().ContainSingle();
+        fakeRepo.Projects[0].Technologies.Should().BeEmpty();
+    }
 }

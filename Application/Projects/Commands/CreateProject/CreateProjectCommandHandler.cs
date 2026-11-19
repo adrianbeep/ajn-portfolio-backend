@@ -25,7 +25,8 @@ public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand,
             command.Slug,
             command.UrlThumbnail,
             command.Description,
-            command.Content);
+            command.Content,
+            command.Technologies);
         
         var addResult = await _repository.AddAsync(project, ct);
         

@@ -10,4 +10,5 @@ public sealed record CreateProjectCommand(
     string Slug,
     string UrlThumbnail,
     string Description,
-    string Content) : IRequest<Result<Guid>>;
+    string Content,
+    IReadOnlyList<string>? Technologies = null) : IRequest<Result<Guid>>;

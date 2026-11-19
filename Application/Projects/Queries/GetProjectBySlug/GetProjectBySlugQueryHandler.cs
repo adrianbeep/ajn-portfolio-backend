@@ -32,6 +32,7 @@ public class GetProjectBySlugQueryHandler
             project.Slug,
             project.UrlThumbnail,
             project.Description,
+            project.Technologies,
             project.Content,
             project.State.ToString(),
             project.CreatedAt,

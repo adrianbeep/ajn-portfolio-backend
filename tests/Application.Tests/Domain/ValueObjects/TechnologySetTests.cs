@@ -1,3 +1,5 @@
+using Application.Projects.Commands.CreateProject;
+using Application.Projects.Commands.UpdateProject;
 using Domain.ValueObjects;
 using FluentAssertions;
 using Xunit;
@@ -128,5 +130,75 @@ public class TechnologySetTests
         source.Add("Next.js");
 
         result.Items.Should().Equal("React");
+    }
+
+    // Paridad: el validador y el value object tienen que rechazar exactamente
+    // las mismas entradas. Si divergen, la API responde 500 en vez de 400.
+    public static TheoryData<IReadOnlyList<string>?> TechnologyInputs => new()
+    {
+        null!,
+        Array.Empty<string>(),
+        new[] { "Astro" },
+        new[] { "Astro", "TypeScript", "EF Core", "SQLite" },
+        new[] { "Astro", "TypeScript", "EF Core", "SQLite", "Vercel" },
+        new[] { "" },
+        new[] { "   " },
+        new[] { "\t" },
+        new[] { "Astro", "" },
+        new[] { new string('a', TechnologySet.MaxLength) },
+        new[] { new string('a', TechnologySet.MaxLength + 1) },
+        new[] { new string('a', TechnologySet.MaxLength) + " " },
+        new[] { new string('a', TechnologySet.MaxLength - 1) + "  " },
+        new[] { new string('a', TechnologySet.MaxLength + 1) + "   " },
+        new[] { "React", "react" },
+        new[] { "React", "react " },
+        new[] { "React", "  React  " },
+        new[] { "React", "React Native" },
+        new[] { "ASP.NET   Core" },
+        new[] { "React", null! },
+    };
+
+    [Theory]
+    [MemberData(nameof(TechnologyInputs))]
+    public void ValidatorsAndValueObject_AgreeOnTheSameVerdict(IReadOnlyList<string>? technologies)
+    {
+        var valueObjectAccepts = Accepts(technologies);
+
+        CreateValidatorAccepts(technologies).Should().Be(
+            valueObjectAccepts,
+            "el validador de creacion y el value object tienen que coincidir en cada entrada");
+
+        UpdateValidatorAccepts(technologies).Should().Be(
+            valueObjectAccepts,
+            "el validador de actualizacion y el value object tienen que coincidir en cada entrada");
+    }
+
+    private static bool CreateValidatorAccepts(IReadOnlyList<string>? technologies)
+    {
+        var command = new CreateProjectCommand(
+            "Title", "my-slug", "https://img.png", "Desc", "Content", technologies);
+
+        return new CreateProjectCommandValidator().Validate(command).IsValid;
+    }
+
+    private static bool UpdateValidatorAccepts(IReadOnlyList<string>? technologies)
+    {
+        var command = new UpdateProjectCommand(
+            "my-slug", "Title", "Desc", "https://img.png", "Content", technologies);
+
+        return new UpdateProjectCommandValidator().Validate(command).IsValid;
+    }
+
+    private static bool Accepts(IReadOnlyList<string>? technologies)
+    {
+        try
+        {
+            TechnologySet.Create(technologies);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 }
