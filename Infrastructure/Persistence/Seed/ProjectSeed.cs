@@ -13,6 +13,7 @@ public static class ProjectSeed
             slug: "mi-portfolio",
             urlThumbnail: "https://example.com/img.png",
             description: "Sitio web de portfolio personal",
+            technologies: new[] { "Astro", "TypeScript", "Vercel" },
             content: SeedText.Normalize("""
                 ## El problema
 
@@ -182,6 +183,7 @@ public static class ProjectSeed
             slug: "api-gestion",
             urlThumbnail: "https://example.com/api.png",
             description: "API REST para gestión de proyectos",
+            technologies: new[] { "ASP.NET Core", "EF Core", "SQLite" },
             content: SeedText.Normalize("""
                 ## El problema
 
@@ -200,7 +202,7 @@ public static class ProjectSeed
                 | `GET /projects` | Envelope paginado | Listado de tarjetas |
                 | `GET /projects/{slug}` | Detalle en markdown crudo | Ficha de proyecto |
 
-                El listado acepta `page` y `pageSize` como parámetros de consulta. Devuelve resúmenes: identificador, slug, título, miniatura, descripción, estado y fecha. El detalle devuelve el proyecto completo, incluido el cuerpo en markdown. La separación no es estética: permite que el listado dibuje las tarjetas sin cargar el cuerpo de ningún proyecto.
+                El listado acepta `page` y `pageSize` como parámetros de consulta. Devuelve resúmenes: identificador, slug, título, miniatura, descripción, tecnologías, estado y fecha. El detalle devuelve el proyecto completo, incluido el cuerpo en markdown. La separación no es estética: permite que el listado dibuje las tarjetas sin cargar el cuerpo de ningún proyecto.
 
                 ### La paginación es un envelope explícito
 
@@ -215,6 +217,7 @@ public static class ProjectSeed
                       "title": "Mi Portfolio",
                       "urlThumbnail": "https://example.com/img.png",
                       "description": "Sitio web de portfolio personal",
+                      "technologies": ["Astro", "TypeScript", "Vercel"],
                       "state": "Active",
                       "createdAt": "2026-01-01T00:00:00Z"
                     }

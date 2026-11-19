@@ -1,4 +1,5 @@
 ﻿using Domain.Enums;
+using Domain.ValueObjects;
 
 namespace Domain.Entities;
 
@@ -15,11 +16,21 @@ public class Project
     public DateTime? UpdatedAt { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 
+    // Las tecnologias son etiquetas libres: entre 0 y 4, sin repetidas y ya
+    // normalizadas. La lista vacia es un estado valido.
+    public IReadOnlyList<string> Technologies { get; private set; } = Array.Empty<string>();
+
     // Constructor protegido para la hidratación del ORM
     protected Project() { }
 
     // Constructor para la creación de un nuevo proyecto
-    public Project(string title, string slug, string urlThumbnail, string description, string content)
+    public Project(
+        string title,
+        string slug,
+        string urlThumbnail,
+        string description,
+        string content,
+        IReadOnlyList<string>? technologies = null)
     {
         Helpers.Helpers.ValidateTitle(title);
         Helpers.Helpers.ValidateSlug(slug);
@@ -30,6 +41,9 @@ public class Project
         UrlThumbnail = urlThumbnail;
         Description = description;
         Content = content;
+
+        // Las reglas viven en el value object: la entidad no las reimplementa.
+        Technologies = TechnologySet.Create(technologies).Items;
 
         // Regla de negocio: Todo proyecto nace activo y registra su creación
         State = State.Active;
@@ -44,7 +58,8 @@ public class Project
         string slug,
         string urlThumbnail,
         string description,
-        string content)
+        string content,
+        IReadOnlyList<string>? technologies = null)
     {
         Helpers.Helpers.ValidateTitle(title);
         Helpers.Helpers.ValidateSlug(slug);
@@ -56,6 +71,9 @@ public class Project
         UrlThumbnail = urlThumbnail;
         Description = description;
         Content = content;
+
+        // Las reglas viven en el value object: la entidad no las reimplementa.
+        Technologies = TechnologySet.Create(technologies).Items;
 
         State = State.Active;
     }
@@ -78,7 +96,8 @@ public class Project
         string title,
         string description,
         string urlThumbnail,
-        string content)
+        string content,
+        IReadOnlyList<string>? technologies = null)
     {
         Helpers.Helpers.ValidateTitle(title);
         
@@ -86,6 +105,8 @@ public class Project
         Description = description;
         UrlThumbnail = urlThumbnail;
         Content = content;
+        // Las reglas viven en el value object: la entidad no las reimplementa.
+        Technologies = TechnologySet.Create(technologies).Items;
         UpdatedAt = DateTime.UtcNow;
     }
 }

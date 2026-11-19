@@ -6,6 +6,7 @@
         string Slug,
         string UrlThumbnail,
         string Description,
+        IReadOnlyList<string> Technologies,
         string Content,
         string State,
         DateTime CreatedAt,

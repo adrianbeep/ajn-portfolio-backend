@@ -65,4 +65,41 @@ public class UpdateProjectCommandHandlerTests
         result.Error.Code.Should().Be("UpdateFailed");
         fakeUow.SaveChangesCallCount.Should().Be(0);
     }
+
+    [Fact]
+    public async Task Handle_WithTechnologies_ReplacesTheStoredOnesInTheAuthorOrder()
+    {
+        var existing = new Project("Old", "my-slug", "old-url", "old-desc", "old-content", new[] { "Old" });
+        var fakeRepo = new FakeProjectRepository();
+        fakeRepo.Seed(existing);
+        var fakeUow = new FakeUnitOfWork();
+        var handler = new UpdateProjectCommandHandler(fakeRepo, fakeUow);
+        var command = new UpdateProjectCommand(
+            "my-slug", "New Title", "New Desc", "new-url", "new-content",
+            new[] { "Astro", "TypeScript" });
+
+        var result = await handler.Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        existing.Technologies.Should().Equal("Astro", "TypeScript");
+    }
+
+    [Fact]
+    public async Task Handle_WithNullTechnologies_ClearsTheStoredOnes()
+    {
+        // El PUT reemplaza la representacion entera: omitir el campo deja el
+        // proyecto sin tecnologias, no con las anteriores.
+        var existing = new Project("Old", "my-slug", "old-url", "old-desc", "old-content", new[] { "Astro" });
+        var fakeRepo = new FakeProjectRepository();
+        fakeRepo.Seed(existing);
+        var fakeUow = new FakeUnitOfWork();
+        var handler = new UpdateProjectCommandHandler(fakeRepo, fakeUow);
+        var command = new UpdateProjectCommand(
+            "my-slug", "New Title", "New Desc", "new-url", "new-content");
+
+        var result = await handler.Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        existing.Technologies.Should().BeEmpty();
+    }
 }

@@ -1,5 +1,6 @@
 using FluentValidation;
 using Application.Projects.Commands.CreateProject;
+using Domain.ValueObjects;
 
 namespace Application.Projects.Commands.CreateProject;
 
@@ -28,5 +29,22 @@ public class CreateProjectCommandValidator : AbstractValidator<CreateProjectComm
         RuleFor(x => x.Content)
             .NotEmpty().WithMessage("Content is required.")
             .MaximumLength(50000).WithMessage("Content must not exceed 50000 characters.");
+
+        // Las reglas de las tecnologias viven en el value object: el validador
+        // las replica con las mismas constantes y la misma normalizacion para
+        // que un dato invalido sea un 400 y nunca una excepcion de dominio.
+        RuleFor(x => x.Technologies)
+            .Must(t => t is null || t.Count <= TechnologySet.MaxCount)
+            .WithMessage($"Technologies must not contain more than {TechnologySet.MaxCount} items.");
+
+        RuleForEach(x => x.Technologies)
+            .Must(v => TechnologySet.Normalize(v).Length > 0)
+            .WithMessage("Technologies cannot contain empty values.")
+            .Must(v => TechnologySet.Normalize(v).Length <= TechnologySet.MaxLength)
+            .WithMessage($"Technologies items must not exceed {TechnologySet.MaxLength} characters.");
+
+        RuleFor(x => x.Technologies)
+            .Must(t => t is null || t.Select(TechnologySet.Normalize).Distinct(StringComparer.OrdinalIgnoreCase).Count() == t.Count)
+            .WithMessage("Technologies must not contain duplicates.");
     }
 }

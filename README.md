@@ -2,7 +2,7 @@
 
 ASP.NET Core Minimal API with Clean Architecture, CQRS, MediatR, and ASP.NET Identity + JWT authentication.
 
-**Status**: Functional backend. Auth, CRUD operations, and public read endpoints work. Full test suite green: **125 tests** (59 unit, 54 infrastructure, 12 integration).
+**Status**: Functional backend. Auth, CRUD operations, and public read endpoints work. Full test suite green: **214 tests** (127 unit, 64 infrastructure, 23 integration).
 
 ## Architecture
 
@@ -68,7 +68,7 @@ dotnet test tests/Api.Tests/
 dotnet test --logger "console;verbosity=detailed"
 ```
 
-Suite completa en verde: **125 tests** (59 de `Application.Tests`, 54 de `Infrastructure.Tests` y 12 de integración de `Api.Tests`). El CI los corre en cada PR y en cada push a `main`.
+Suite completa en verde: **214 tests** (127 de `Application.Tests`, 64 de `Infrastructure.Tests` y 23 de integración de `Api.Tests`). El CI los corre en cada PR y en cada push a `main`.
 
 ## Docker
 
@@ -137,7 +137,7 @@ PUBLIC_API_BASE_URL=http://localhost:8080
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|--------------|----------|
-| `.github/workflows/ci.yml` | Pull requests y push a `main` | `restore` + `build` + **125 tests**, construye la imagen Docker y levanta un contenedor de prueba (*smoke test*) contra `/health` y `/projects` |
+| `.github/workflows/ci.yml` | Pull requests y push a `main` | `restore` + `build` + **214 tests**, construye la imagen Docker y levanta un contenedor de prueba (*smoke test*) contra `/health` y `/projects` |
 | `.github/workflows/cd.yml` | Push a `main` (y manual) | Publica la imagen en GHCR (`ghcr.io/<repo>`) con tags `latest` y `sha`, y opcionalmente dispara el deploy de Render |
 
 **Secretos de GitHub**:
@@ -162,9 +162,10 @@ ajn-portfolio-backend/
 │   ├── Authentication/     # Auth commands, queries, DTOs
 │   ├── Projects/           # Project commands, queries, DTOs
 │   └── Contributions/      # Contribution commands, queries, DTOs
-├── Domain/                 # Entities, enums, helpers
+├── Domain/                 # Entities, enums, value objects, helpers
 │   ├── Entities/          # Project, Contribution, ApplicationUser
 │   ├── Enums/             # State enum
+│   ├── ValueObjects/      # TechnologySet (rules of the project technologies)
 │   └── Helpers/            # Validation helpers
 ├── Infrastructure/         # EF Core, Identity, repositories
 │   ├── Authentication/    # JWT token generator, validators

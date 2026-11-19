@@ -6,5 +6,6 @@
         string Slug,
         string UrlThumbnail,
         string Description,
-        string Content);
+        string Content,
+        IReadOnlyList<string>? Technologies = null);
 }

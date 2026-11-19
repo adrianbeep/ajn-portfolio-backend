@@ -180,6 +180,10 @@ Controller → ISender.Send(new CreateProjectCommand(...))
 ←
 ```
 
+**Nota sobre la implementación**: el registro real en `Application/DependencyInjection.cs` es `Audit → Logging → Authorization → Validation → Handler`, es decir Audit queda **más afuera** que en el diagrama. La razón es que el `AuditBehavior` registra el intento y su veredicto: si fuera el más interno, la auditoría solo anotaría comandos que ya pasaron autorización y validación, y la rama de "failure" del behavior no se dispararía casi nunca. Con Audit afuera también quedan registrados los intentos rechazados.
+
+El resto del orden sí coincide con el diagrama: la autorización va antes que la validación (un cliente anónimo recibe 401 en vez de 400, así no puede descubrir el esquema de un endpoint admin) y el logging envuelve a las dos puertas, así que toda petición deja rastro. `tests/Application.Tests/Behaviors/PipelineOrderTests.cs` fija el orden, para que un cambio de registro rompa la suite en vez de apartarse de la documentación en silencio.
+
 Si el handler tira una excepción, los behaviors la pueden capturar y traducir (e.g., `ValidationBehavior` traduce a `Result.Failure`).
 
 ### Bootstrap Token Pattern
