@@ -54,9 +54,9 @@ public class UpdateProjectCommandValidatorTests
         var result = _validator.Validate(Command(new[] { "Astro", empty }));
 
         result.IsValid.Should().BeFalse();
-        // RuleForEach reporta el elemento con su indice: "Technologies[1]".
+        // El dominio reporta el elemento que incumple con su indice: "Technologies[1]".
         result.Errors.Should().Contain(e =>
-            e.PropertyName.StartsWith("Technologies", StringComparison.Ordinal)
+            e.PropertyName == "Technologies[1]"
             && e.ErrorMessage == "Technologies cannot contain empty values.");
     }
 
@@ -69,7 +69,7 @@ public class UpdateProjectCommandValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e =>
-            e.PropertyName.StartsWith("Technologies", StringComparison.Ordinal)
+            e.PropertyName == "Technologies[0]"
             && e.ErrorMessage == $"Technologies items must not exceed {TechnologySet.MaxLength} characters.");
     }
 
