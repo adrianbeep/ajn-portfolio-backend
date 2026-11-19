@@ -23,6 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verificar finales de linea
+        run: sh .github/scripts/check-line-endings.sh
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -63,8 +66,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck
 
-      - name: Shellcheck de los scripts del contenedor
-        run: shellcheck docker-entrypoint.sh
+      - name: Shellcheck de los scripts
+        run: shellcheck docker-entrypoint.sh .github/scripts/check-line-endings.sh
 
   docker:
     name: Imagen Docker y smoke test
