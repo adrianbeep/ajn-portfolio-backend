@@ -2,7 +2,7 @@
 
 ASP.NET Core Minimal API with Clean Architecture, CQRS, MediatR, and ASP.NET Identity + JWT authentication.
 
-**Status**: Functional backend. Auth, CRUD operations, and public read endpoints work. Integration tests partially complete (16/24 passing).
+**Status**: Functional backend. Auth, CRUD operations, and public read endpoints work. Full test suite green: **125 tests** (59 unit, 54 infrastructure, 12 integration).
 
 ## Architecture
 
@@ -68,7 +68,7 @@ dotnet test tests/Api.Tests/
 dotnet test --logger "console;verbosity=detailed"
 ```
 
-Suite completa en verde: **121 tests** (59 de `Application.Tests`, 50 de `Infrastructure.Tests` y 12 de integración de `Api.Tests`). El CI los corre en cada PR y en cada push a `main`.
+Suite completa en verde: **125 tests** (59 de `Application.Tests`, 54 de `Infrastructure.Tests` y 12 de integración de `Api.Tests`). El CI los corre en cada PR y en cada push a `main`.
 
 ## Docker
 
@@ -137,7 +137,7 @@ PUBLIC_API_BASE_URL=http://localhost:8080
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|--------------|----------|
-| `.github/workflows/ci.yml` | Pull requests y push a `main` | `restore` + `build` + **121 tests**, construye la imagen Docker y levanta un contenedor de prueba (*smoke test*) contra `/health` y `/projects` |
+| `.github/workflows/ci.yml` | Pull requests y push a `main` | `restore` + `build` + **125 tests**, construye la imagen Docker y levanta un contenedor de prueba (*smoke test*) contra `/health` y `/projects` |
 | `.github/workflows/cd.yml` | Push a `main` (y manual) | Publica la imagen en GHCR (`ghcr.io/<repo>`) con tags `latest` y `sha`, y opcionalmente dispara el deploy de Render |
 
 **Secretos de GitHub**:
@@ -242,8 +242,7 @@ Production (planned): PostgreSQL on Render/Turso.
 
 ## Known Issues
 
-1. **Integration tests**: 9/24 fail due to test harness issues with cookie propagation across HttpClient instances in NUnit (SameSite=Strict + HTTP). AuthTests (7/7) and PublicEndpointsTests (5/5) pass. Not a production code issue.
-2. **Hardcoded JWT secret** in `appsettings.Development.json` — never commit production secrets
+1. **Hardcoded JWT secret and bootstrap token** in `appsettings.Development.json` — development-only placeholders. Docker and Render inject the real values as environment variables.
 
 ## Roadmap
 
