@@ -6,3 +6,9 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 Dockerfile text eol=lf
+
+# El codigo C# lleva contenido multilinea dentro del archivo (el markdown que
+# se siembra, por ejemplo). El compilador embebe los saltos de linea tal cual
+# estan, asi que con CRLF el modelo de EF Core difiere del snapshot en Linux
+# y la aplicacion no arranca (PendingModelChangesWarning). Ver issue #5.
+*.cs text eol=lf
