@@ -34,6 +34,7 @@ erDiagram
 		datetime created_at
 		datetime updated_at
 		datetime deleted_at
+		string technologies "json"
 	}
 
 	CONTRIBUTIONS {

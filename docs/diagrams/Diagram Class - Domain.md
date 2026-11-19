@@ -1,10 +1,15 @@
 Diagrama de clases del dominio. Refleja el estado actual del código:
-`Domain/Entities/Project.cs`, `Domain/Entities/Contribution.cs` y `Domain/Enums/State.cs`.
+`Domain/Entities/Project.cs`, `Domain/Entities/Contribution.cs`, `Domain/Enums/State.cs`
+y `Domain/ValueObjects/TechnologySet.cs`.
 
 El enum de estado es `Domain.Enums.State` con los valores `Active` e `Inactive`.
 `Project` y `Contribution` lo usan para el estado de publicación; `ApplicationUser`
 hereda de `IdentityUser` (ASP.NET Core Identity) y no tiene relación con los proyectos
 ni con las contribuciones.
+
+`TechnologySet` es un value object: es la única fuente de las reglas de las tecnologías
+de un proyecto (cuántas caben, cuánto mide cada una, que no se repitan) y `Project` no
+puede guardar un set inválido porque las aplica siempre a través de esa clase.
 
 ```mermaid
 classDiagram
@@ -20,6 +25,7 @@ classDiagram
 		datetime CreatedAt
 		datetime? UpdatedAt
 		datetime? DeletedAt
+		IReadOnlyList~string~ Technologies
 	}
 	
 	class Contribution {
@@ -43,6 +49,13 @@ classDiagram
 		Inactive
 	}
 	
+	class TechnologySet {
+		<<value object>>
+		int MaxCount
+		int MaxLength
+		IReadOnlyList~string~ Items
+	}
+	
 	class ApplicationUser {
 		<<entity>>
 	}
@@ -55,4 +68,5 @@ classDiagram
 	
 	Project --> State : State
 	Contribution --> State : State
+	Project ..> TechnologySet : reglas de Technologies
 ```

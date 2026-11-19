@@ -106,10 +106,11 @@ Browser → POST /admin/projects
 
 - Entities with encapsulated business rules
 - Enums (e.g., `State` for Project status)
+- Value objects (e.g., `TechnologySet`, which owns the rules of the project technologies)
 - Validation helpers (used by entity constructors)
 - NO dependencies on other layers
 
-**Files**: `Entities/`, `Enums/`, `Helpers/`
+**Files**: `Entities/`, `Enums/`, `ValueObjects/`, `Helpers/`
 
 ## Dependency Rule
 
@@ -181,6 +182,7 @@ erDiagram
         datetime CreatedAt
         datetime UpdatedAt
         datetime DeletedAt "soft delete"
+        stringArray Technologies "json array"
     }
 
     CONTRIBUTION {
@@ -227,7 +229,7 @@ erDiagram
 
 - **D1**: No FK relationship between User and Project/Contribution. The admin is not the "author" of projects.
 - **D4**: Single `AppDbContext` extends `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`
-- **D22**: Project is a **semi-rich domain model** — private setters, public behavior methods (`MarkAsDeleted()`, `Restore()`, `SetActive()`, `SetInactive()`)
+- **D22**: Project is a **semi-rich domain model** — private setters, public behavior methods (`MarkAsDeleted()`, `Restore()`, `Update()`) and a `TechnologySet` value object that owns the rules of the technologies
 
 ## Soft Delete Pattern
 

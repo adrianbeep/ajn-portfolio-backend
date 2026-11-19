@@ -172,6 +172,7 @@ GET /projects?page={page}&pageSize={pageSize}
       "title": "AJN Portfolio Backend",
       "urlThumbnail": "https://cdn.example.com/thumbnails/backend.webp",
       "description": "Clean Architecture ASP.NET Core 10 backend with CQRS and EF Core.",
+      "technologies": ["ASP.NET Core", "EF Core", "SQLite"],
       "state": "Active",
       "createdAt": "2026-09-30T18:00:00Z"
     }
@@ -207,6 +208,7 @@ GET /projects/{slug}
   "slug": "portfolio-backend",
   "urlThumbnail": "https://cdn.example.com/thumbnails/backend.webp",
   "description": "Clean Architecture ASP.NET Core 10 backend with CQRS and EF Core.",
+  "technologies": ["ASP.NET Core", "EF Core", "SQLite"],
   "content": "# Overview\n\nDetailed markdown content describing the architecture...",
   "state": "Active",
   "createdAt": "2026-09-30T18:00:00Z",
@@ -390,7 +392,8 @@ Content-Type: application/json
   "slug": "nextgen-payment-gateway",
   "urlThumbnail": "https://cdn.example.com/thumbs/payments.png",
   "description": "High-throughput payment orchestration engine.",
-  "content": "# NextGen Payments\n\nFull architecture breakdown..."
+  "content": "# NextGen Payments\n\nFull architecture breakdown...",
+  "technologies": ["Go", "PostgreSQL", "Redis"]
 }
 ```
 
@@ -402,6 +405,7 @@ Content-Type: application/json
 | `urlThumbnail` | Yes | 2000 chars | Valid URL |
 | `description` | Yes | 1000 chars | Non-empty summary |
 | `content` | Yes | 50000 chars | Markdown text |
+| `technologies` | No | Up to 4 items, each up to 30 chars | Free-text tags. No duplicates (case-insensitive) and no empty item after trimming |
 
 #### Success Response (201 Created)
 - Header: `Location: /projects/nextgen-payment-gateway`
@@ -439,12 +443,16 @@ Form to update an existing project's title, description, thumbnail, or markdown 
      "slug": "portfolio-backend",
      "urlThumbnail": "https://cdn.example.com/thumbnails/backend-v2.webp",
      "description": "Updated summary of the Clean Architecture backend.",
-     "content": "# Updated Content..."
+     "content": "# Updated Content...",
+     "technologies": ["ASP.NET Core", "EF Core", "SQLite"]
    }
    ```
 
 > [!NOTE]
 > The `id` and `slug` fields in the payload are ignored by the server. The project is identified solely by the `{slug}` in the URL. Disable or make the slug field read-only in the UI.
+
+> [!NOTE]
+> `PUT /admin/projects/{slug}` **replaces the whole representation**: every field missing from the payload is reset to its empty value. Omitting `technologies` therefore **clears** the stored technologies. Always send the current list explicitly if the tags should be preserved.
 
 #### Success Response (200 OK)
 Returns the updated `ProjectDetailDto`.  
@@ -580,6 +588,7 @@ export interface ProjectSummaryDto {
   title: string;
   urlThumbnail: string;
   description: string;
+  technologies: string[];
   state: EntityState;
   createdAt: ISODateTime;
 }
@@ -590,6 +599,7 @@ export interface ProjectDetailDto {
   slug: string;
   urlThumbnail: string;
   description: string;
+  technologies: string[];
   content: string;
   state: EntityState;
   createdAt: ISODateTime;
@@ -612,6 +622,7 @@ export interface CreateProjectRequest {
   urlThumbnail: string;
   description: string;
   content: string;
+  technologies?: string[];
 }
 
 export interface UpdateProjectRequest {
@@ -621,6 +632,7 @@ export interface UpdateProjectRequest {
   urlThumbnail: string;
   description: string;
   content: string;
+  technologies?: string[];
 }
 
 /**
