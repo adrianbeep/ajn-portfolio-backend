@@ -63,29 +63,73 @@ public sealed class TechnologySet
 
         foreach (var raw in source)
         {
-            var value = Normalize(raw);
+            var verdict = Evaluate(raw, seen);
 
-            if (value.Length == 0)
+            if (verdict.IsEmpty)
                 throw new DomainValidationException("Technologies", Messages.EmptyValue);
 
-            if (value.Length > MaxLength)
+            if (verdict.IsTooLong)
                 throw new DomainValidationException("Technologies", Messages.TooLong);
 
             // El primero que aparece gana: se conserva su formato y el orden
             // del autor. Los repetidos se rechazan aunque cambien de formato.
-            if (!seen.Add(value))
+            if (verdict.IsDuplicate)
                 throw new DomainValidationException("Technologies", Messages.Duplicated);
 
-            normalized.Add(value);
+            normalized.Add(verdict.Value);
         }
 
         return new TechnologySet(normalized);
     }
 
+    // El veredicto del dominio sin lanzar excepcion: el validador de la capa
+    // de aplicacion lo consulta para devolver un 400 en vez de una excepcion
+    // de dominio. Las reglas son las mismas y estan en el mismo sitio, asi
+    // que el validador ya no puede copiarlas y desincronizarse.
+    // Devuelve las violaciones en el orden en que las ve el cliente: primero
+    // la de la coleccion, despues las de cada elemento y al final la de los
+    // duplicados, que tambien es una regla de la coleccion entera.
+    public static IReadOnlyList<TechnologyViolation> Validate(IEnumerable<string>? technologies)
+    {
+        if (technologies is null)
+            return Array.Empty<TechnologyViolation>();
+
+        var source = technologies.ToArray();
+        var violations = new List<TechnologyViolation>();
+
+        if (source.Length > MaxCount)
+            violations.Add(new TechnologyViolation(null, Messages.TooManyItems));
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hasDuplicates = false;
+
+        for (var index = 0; index < source.Length; index++)
+        {
+            var verdict = Evaluate(source[index], seen);
+
+            if (verdict.IsEmpty)
+                violations.Add(new TechnologyViolation(index, Messages.EmptyValue));
+
+            if (verdict.IsTooLong)
+                violations.Add(new TechnologyViolation(index, Messages.TooLong));
+
+            if (verdict.IsDuplicate)
+                hasDuplicates = true;
+        }
+
+        // Los duplicados se reportan una sola vez y sin indice: son una regla
+        // de la coleccion entera, no de un elemento concreto.
+        if (hasDuplicates)
+            violations.Add(new TechnologyViolation(null, Messages.Duplicated));
+
+        return violations;
+    }
+
     // Normalizar es recortar y colapsar los espacios internos en uno solo.
     // El valor normalizado es el que se compara y el que se persiste.
-    // Es publico para que los validadores de la capa de aplicacion apliquen
-    // exactamente esta normalizacion y no diverjan de estas reglas.
+    // Es publico porque es parte de la API del value object: el veredicto de
+    // las reglas se apoya en esta normalizacion y quien lo consulte necesita
+    // poder reproducirla.
     public static string Normalize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -94,4 +138,26 @@ public sealed class TechnologySet
         var parts = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         return string.Join(' ', parts);
     }
+
+    // El veredicto de un elemento contra las reglas del dominio. El elemento
+    // se registra en "seen" al evaluarlo, asi que el primer caso escrito es el
+    // que gana y los repetidos se detectan aunque cambien de formato.
+    // Es lo unico que decide si un elemento es valido: las dos caras del
+    // dominio (la excepcion y el veredicto) consultan esta misma evaluacion.
+    private static ItemVerdict Evaluate(string? raw, HashSet<string> seen)
+    {
+        var value = Normalize(raw);
+
+        return new ItemVerdict(
+            value,
+            value.Length == 0,
+            value.Length > MaxLength,
+            !seen.Add(value));
+    }
+
+    private readonly record struct ItemVerdict(
+        string Value,
+        bool IsEmpty,
+        bool IsTooLong,
+        bool IsDuplicate);
 }

@@ -143,6 +143,94 @@ public class TechnologySetTests
         result.Items.Should().Equal("React");
     }
 
+    [Fact]
+    public void Create_WithADuplicateBeforeAnEmptyItem_ThrowsTheDuplicate()
+    {
+        // El camino de excepcion lanza la primera violacion en el orden en que
+        // las revisa el dominio (elemento a elemento), que no es el mismo
+        // orden que usa el validador (que agrupa los duplicados al final).
+        // Los dos caminos coinciden en el veredicto, no en el orden.
+        Action act = () => TechnologySet.Create(new[] { "react", "React", "   " });
+
+        var exception = act.Should().Throw<DomainValidationException>().Which;
+
+        exception.Message.Should().Be(TechnologySet.Messages.Duplicated);
+    }
+
+    // El veredicto del dominio, sin excepcion: es lo que consulta el validador
+    // de la capa de aplicacion para devolver un 400 y no un 500.
+    [Fact]
+    public void Validate_WithNull_ReturnsNoViolations()
+    {
+        TechnologySet.Validate(null).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithValidTechnologies_ReturnsNoViolations()
+    {
+        TechnologySet.Validate(new[] { "Astro", "TypeScript" }).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithFiveItems_ReportsTheCollectionLevelViolation()
+    {
+        var violations = TechnologySet.Validate(new[] { "Astro", "TypeScript", "EF Core", "SQLite", "Vercel" });
+
+        violations.Should().ContainSingle()
+            .Which.Should().Be(new TechnologyViolation(null, TechnologySet.Messages.TooManyItems));
+    }
+
+    [Fact]
+    public void Validate_WithAnEmptyItem_ReportsTheViolationWithItsIndex()
+    {
+        var violations = TechnologySet.Validate(new[] { "Astro", "   " });
+
+        violations.Should().ContainSingle()
+            .Which.Should().Be(new TechnologyViolation(1, TechnologySet.Messages.EmptyValue));
+    }
+
+    [Fact]
+    public void Validate_WithATooLongItem_ReportsTheViolationWithItsIndex()
+    {
+        var tooLong = new string('a', TechnologySet.MaxLength + 1);
+
+        var violations = TechnologySet.Validate(new[] { "Astro", tooLong });
+
+        violations.Should().ContainSingle()
+            .Which.Should().Be(new TechnologyViolation(1, TechnologySet.Messages.TooLong));
+    }
+
+    [Fact]
+    public void Validate_WithDuplicates_ReportsTheCollectionLevelViolation()
+    {
+        var violations = TechnologySet.Validate(new[] { "React", "react" });
+
+        violations.Should().ContainSingle()
+            .Which.Should().Be(new TechnologyViolation(null, TechnologySet.Messages.Duplicated));
+    }
+
+    [Fact]
+    public void Validate_ReportsTheTooManyViolationBeforeThePerItemViolations()
+    {
+        var tooLong = new string('a', TechnologySet.MaxLength + 1);
+
+        var violations = TechnologySet.Validate(new[] { "Astro", tooLong, "EF Core", "SQLite", "Vercel" });
+
+        violations.Should().Equal(
+            new TechnologyViolation(null, TechnologySet.Messages.TooManyItems),
+            new TechnologyViolation(1, TechnologySet.Messages.TooLong));
+    }
+
+    [Fact]
+    public void Validate_ReportsTheDuplicatedViolationAfterThePerItemViolations()
+    {
+        var violations = TechnologySet.Validate(new[] { "React", "react", "   " });
+
+        violations.Should().Equal(
+            new TechnologyViolation(2, TechnologySet.Messages.EmptyValue),
+            new TechnologyViolation(null, TechnologySet.Messages.Duplicated));
+    }
+
     // El dominio es el dueno del texto de sus reglas: el validador de la capa
     // de aplicacion usa los mismos mensajes, asi el camino normal y el camino
     // de excepcion producen exactamente el mismo texto para el cliente.
@@ -165,8 +253,11 @@ public class TechnologySetTests
         UpdateValidatorMessage(duplicated).Should().Be(TechnologySet.Messages.Duplicated);
     }
 
-    // Paridad: el validador y el value object tienen que rechazar exactamente
-    // las mismas entradas. Si divergen, la API responde 500 en vez de 400.
+    // La paridad entre el validador y el dominio ya no es una copia de las
+    // reglas: el validador consulta el veredicto del value object. Esta teoria
+    // sigue siendo la red de seguridad del cableado: si el validador dejara de
+    // preguntar al dominio, o si el dominio cambiara una regla sin que el
+    // validador lo reflejara, fallaria.
     public static TheoryData<IReadOnlyList<string>?> TechnologyInputs => new()
     {
         null!,
@@ -193,18 +284,29 @@ public class TechnologySetTests
 
     [Theory]
     [MemberData(nameof(TechnologyInputs))]
-    public void ValidatorsAndValueObject_AgreeOnTheSameVerdict(IReadOnlyList<string>? technologies)
+    public void TheValidatorsReportExactlyTheViolationsOfTheValueObject(IReadOnlyList<string>? technologies)
     {
-        var valueObjectAccepts = Accepts(technologies);
+        var violations = TechnologySet.Validate(technologies);
 
-        CreateValidatorAccepts(technologies).Should().Be(
-            valueObjectAccepts,
-            "el validador de creacion y el value object tienen que coincidir en cada entrada");
+        CreateValidatorViolations(technologies).Should().Equal(ExpectedViolations(violations));
+        UpdateValidatorViolations(technologies).Should().Equal(ExpectedViolations(violations));
 
-        UpdateValidatorAccepts(technologies).Should().Be(
-            valueObjectAccepts,
-            "el validador de actualizacion y el value object tienen que coincidir en cada entrada");
+        // El dominio lanza exactamente cuando el value object reporta una
+        // violacion: son las dos caras de la misma regla.
+        Accepts(technologies).Should().Be(violations.Count == 0);
     }
+
+    // El nombre de la propiedad que ve el cliente: la coleccion entera para
+    // las reglas de la coleccion y el indice del elemento para las suyas.
+    private static List<(string PropertyName, string Message)> ExpectedViolations(
+        IReadOnlyList<TechnologyViolation> violations)
+        => violations
+            .Select(violation => (
+                PropertyName: violation.Index is null
+                    ? "Technologies"
+                    : $"Technologies[{violation.Index}]",
+                Message: violation.Message))
+            .ToList();
 
     private static string CreateValidatorMessage(IReadOnlyList<string> technologies)
     {
@@ -226,20 +328,26 @@ public class TechnologySetTests
             .First();
     }
 
-    private static bool CreateValidatorAccepts(IReadOnlyList<string>? technologies)
+    private static List<(string PropertyName, string Message)> CreateValidatorViolations(
+        IReadOnlyList<string>? technologies)
     {
         var command = new CreateProjectCommand(
             "Title", "my-slug", "https://img.png", "Desc", "Content", technologies);
 
-        return new CreateProjectCommandValidator().Validate(command).IsValid;
+        return new CreateProjectCommandValidator().Validate(command).Errors
+            .Select(error => (error.PropertyName, error.ErrorMessage))
+            .ToList();
     }
 
-    private static bool UpdateValidatorAccepts(IReadOnlyList<string>? technologies)
+    private static List<(string PropertyName, string Message)> UpdateValidatorViolations(
+        IReadOnlyList<string>? technologies)
     {
         var command = new UpdateProjectCommand(
             "my-slug", "Title", "Desc", "https://img.png", "Content", technologies);
 
-        return new UpdateProjectCommandValidator().Validate(command).IsValid;
+        return new UpdateProjectCommandValidator().Validate(command).Errors
+            .Select(error => (error.PropertyName, error.ErrorMessage))
+            .ToList();
     }
 
     private static bool Accepts(IReadOnlyList<string>? technologies)
